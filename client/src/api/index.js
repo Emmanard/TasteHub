@@ -96,7 +96,7 @@ export const handleApiError = (error) => {
       console.error("Authentication error:", error.response.data.message || "Authentication failed");
       
       // Optional: Could clear token and redirect to login on authentication failures
-      // localStorage.removeItem("krist-app-token");
+      // localStorage.removeItem("foodeli-app-token");
       // window.location.href = "/login";
       
       return {

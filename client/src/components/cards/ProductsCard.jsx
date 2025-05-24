@@ -257,7 +257,7 @@ const ProductsCard = ({ product }) => {
       
       // If token expired or invalid, clear it
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        localStorage.removeItem("krist-app-token");
+        localStorage.removeItem("foodeli-app-token");
       }
     } finally {
       setFavoriteLoading(false);

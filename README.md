@@ -164,7 +164,7 @@ const results = await searchProducts(searchParams);
 
 ### Add to Cart
 ```javascript
-const token = localStorage.getItem("krist-app-token");
+const token = localStorage.getItem("foodeli-app-token");
 const cartData = {
   productId: "product_id_here",
   quantity: 2
@@ -174,7 +174,7 @@ await addToCart(token, cartData);
 
 ### Place Order
 ```javascript
-const token = localStorage.getItem("krist-app-token");
+const token = localStorage.getItem("foodeli-app-token");
 const orderData = {
   products: [
     { productId: "id1", quantity: 2 },
@@ -221,7 +221,7 @@ npm test
 
 ## 🔒 Authentication
 
-The application uses JWT (JSON Web Tokens) for authentication. Tokens are stored in localStorage with the key `krist-app-token` and included in API requests via Authorization headers.
+The application uses JWT (JSON Web Tokens) for authentication. Tokens are stored in localStorage with the key `foodeli-app-token` and included in API requests via Authorization headers.
 
 ## 🛡️ Error Handling
 
