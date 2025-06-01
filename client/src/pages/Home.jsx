@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
@@ -74,9 +75,101 @@ const Home = () => {
 
   return (
     <Container>
-      <Section>
-        <Img src={HeaderImage} />
-      </Section>
+      <section className="flex flex-col lg:flex-row items-center justify-between w-full px-6 lg:px-24 py-16 bg-white relative">
+        {/* Left Text Section */}
+        <div className="lg:w-1/2 space-y-6">
+          <span className="bg-red-100 text-red-500 px-4 py-1 rounded-full text-sm font-semibold inline-flex items-center">
+            More than Faster 🍒
+          </span>
+
+          <h1 className="text-4xl lg:text-5xl font-extrabold leading-snug">
+            Claim Best Offer <br />
+            on Fast <span className="text-red-500 italic">Food</span> &{" "}
+            <span className="text-red-500 italic">Restaurants</span>
+          </h1>
+
+          <p className="text-gray-600 text-lg">
+            Our job is to filling your tummy with delicious food and with fast
+            and free delivery
+          </p>
+
+          {/* Buttons */}
+          <div className="flex items-center space-x-4">
+            <button className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-full">
+              Get Started
+            </button>
+            <button className="flex items-center space-x-2">
+              <span className="bg-yellow-400 text-white p-3 rounded-full">
+                &#9658;
+              </span>
+              <span className="font-medium">Watch Video</span>
+            </button>
+          </div>
+
+          {/* Customer Review */}
+          <div className="flex items-center space-x-4 mt-6">
+            <div className="flex -space-x-3">
+              <img
+                src="/profile3.jpg"
+                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+              />
+              <img
+                src="/profile2.jpg"
+                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+              />
+              <img
+                src="/profile.jpg"
+                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+              />
+            </div>
+            <div>
+              <p className="font-semibold">Our Happy Customer</p>
+              <p className="text-gray-500 text-sm">
+                ⭐ 4.8 <span className="text-gray-400">(12.5k Review)</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Image Section */}
+        <div className="relative lg:w-1/2 mt-12 lg:mt-0">
+          <img
+            src="https://www.yumlista.com/storage/recipes/AiEgolJU4zflIQ03P49S9Czgbtjp0DptdYOa2nM5.jpg" // Replace with actual URL later
+            alt="Nigerian Food"
+            className="rounded-full w-full max-w-sm mx-auto shadow-lg"
+          />
+
+          {/* Courier Info */}
+          <div className="absolute bottom-24 left-4 bg-white px-4 py-2 rounded-full flex items-center shadow-lg">
+            <img
+              src="/portrait.jpg"
+              alt="Courier"
+              className="w-8 h-8 rounded-full mr-2 object-cover"
+            />
+            <div className="text-sm">
+              <p className="font-semibold">Abang Emmanuel</p>
+              <p className="text-gray-500">Food Courier</p>
+            </div>
+            <button className="ml-4 bg-red-500 p-2 rounded-full text-white">
+              &#9742;
+            </button>
+          </div>
+
+          {/* Pizza Info */}
+          <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-xl shadow-xl flex items-center space-x-4">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRA6Jjlr6QK1urtfiaHAbCUmnpovknHFtxzLg&s"
+              alt="Jellof rice"
+              className="w-12 h-12 rounded-full"
+            />
+            <div className="text-sm">
+              <p className="font-semibold">Jellof rice</p>
+              <p className="text-yellow-500">★★★★☆</p>
+              <p className="text-red-500 font-bold">₦3,500</p>
+            </div>
+          </div>
+        </div>
+      </section>
       <Section>
         <Title>Food Categories</Title>
         <CardWrapper>
@@ -84,7 +177,9 @@ const Home = () => {
             <ProductCategoryCard
               key={category.id || category.title}
               category={category}
-              onClick={() => handleCategoryClick(category.name || category.title)}
+              onClick={() =>
+                handleCategoryClick(category.name || category.title)
+              }
             />
           ))}
         </CardWrapper>
@@ -97,7 +192,6 @@ const Home = () => {
         ) : (
           <CardWrapper>
             {products.map((product) => {
-              
               return <ProductsCard key={product._id} product={product} />;
             })}
           </CardWrapper>

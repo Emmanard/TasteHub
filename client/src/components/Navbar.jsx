@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { Link as LinkR, NavLink } from "react-router-dom";
-import LogoImg from "../utils/Images/Logo.png";
+import LogoImg from "../utils/Images/Image_fx.jpg";
 import {
   FavoriteBorder,
   MenuRounded,
@@ -39,6 +39,7 @@ const NavLogo = styled(LinkR)`
   width: 100%;
   display: flex;
   align-items: center;
+  border-radius: 200px;
   padding: 0 6px;
   font-weight: 500;
   font-size: 18px;
