@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {  useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import ProductCard from "../components/cards/ProductsCard";
 import { filter } from "../utils/data";
@@ -95,19 +95,18 @@ const FoodListing = () => {
   const [products, setProducts] = useState([]);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  console.log(selectedCategories, "selectedCategories");
+
   const [searchParams] = useSearchParams();
 
   // Get category from URL parameter
-  const categoryFromUrl = searchParams.get('category');
+  const categoryFromUrl = searchParams.get("category");
 
   const getFilteredProductsData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAllProducts(
-        selectedCategories.length > 0
-          ? `minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}&categories=${selectedCategories.join(",")}`
-          : `minPrice=${priceRange[0]}&maxPrice=${priceRange[1]}`
-      );
+      const res = await getAllProducts(selectedCategories);
+      console.log("Fetched products:", res.data); // ADD THIS
       setProducts(res.data);
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -132,9 +131,9 @@ const FoodListing = () => {
       return `${categoryFromUrl} Dishes`;
     }
     if (selectedCategories.length > 0) {
-      return `${selectedCategories.join(', ')} Dishes`;
+      return `${selectedCategories.join(", ")} Dishes`;
     }
-    return 'All Dishes';
+    return "All Dishes";
   };
 
   return (
@@ -145,18 +144,19 @@ const FoodListing = () => {
             <FilterSection key={filters.value}>
               <Title>{filters.name}</Title>
               {filters.value === "price" ? (
-                <Slider
-                  getAriaLabel={() => "Price range"}
-                  value={priceRange}
-                  min={0}
-                  max={1000}
-                  valueLabelDisplay="auto"
-                  marks={[
-                    { value: 0, label: "$0" },
-                    { value: 1000, label: "$1000" },
-                  ]}
-                  onChange={(e, newValue) => setPriceRange(newValue)}
-                />
+                // <Slider
+                //   getAriaLabel={() => "Price range"}
+                //   value={priceRange}
+                //   min={0}
+                //   max={1000}
+                //   valueLabelDisplay="auto"
+                //   marks={[
+                //     { value: 0, label: "$0" },
+                //     { value: 1000, label: "$1000" },
+                //   ]}
+                //   onChange={(e, newValue) => setPriceRange(newValue)}
+                // />
+                <div></div>
               ) : filters.value === "category" ? (
                 <Item>
                   {filters.items.map((item) => (

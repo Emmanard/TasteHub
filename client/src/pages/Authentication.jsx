@@ -1,8 +1,8 @@
 import { Modal } from "@mui/material";
 import React, { useState } from "react";
 import styled from "styled-components";
-import LogoImage from "../utils/Images/Logo.png";
-import AuthImage from "../utils/Images/AuthImage.jpg";
+import LogoImage from "../utils/Images/Image_fx.jpg";
+import AuthImage from "../utils/Images/AuthPic.webp";
 import { Close } from "@mui/icons-material";
 import SignIn from "../components/SignIn";
 import SignUp from "../components/SignUp";
@@ -25,6 +25,29 @@ const Logo = styled.img`
   position: absolute;
   top: 40px;
   left: 60px;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background: ${({ theme }) => theme.bg};
+  border: 2px solid ${({ theme }) => theme.primary};
+  transition: all 0.3s ease;
+  &:hover {
+    transform: scale(1.05);
+  }
+  @media (max-width: 400px) {
+    width: 80px;
+    height: 80px;
+    top: 20px;
+    left: 20px;
+  }
+  @media (max-width: 768px) {
+    width: 100px;
+    height: 100px;
+    top: 20px;
+    left: 20px;
+  }
   z-index: 10;
 `;
 const Image = styled.img`
