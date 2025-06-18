@@ -12,7 +12,7 @@ import {
   deleteFromFavourite,
   getFavourite,
   addToCart,
-  handleApiError
+  handleApiError,
 } from "../../api";
 import { useDispatch } from "react-redux";
 import { openSnackbar } from "../../redux/reducers/SnackbarSlice";
@@ -171,7 +171,7 @@ const ProductsCard = ({ product }) => {
 
     setFavoriteLoading(true);
     const token = localStorage.getItem("foodeli-app-token");
-    
+
     try {
       await addToFavourite(token, { productId: product._id });
       setFavorite(true);
@@ -185,9 +185,12 @@ const ProductsCard = ({ product }) => {
       console.error("Add to favorite error:", err);
       const errorDetails = handleApiError(err);
       dispatch(openSnackbar(errorDetails));
-      
+
       // If authentication error, redirect to login
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+      if (
+        err.response &&
+        (err.response.status === 401 || err.response.status === 403)
+      ) {
         localStorage.removeItem("foodeli-app-token");
         navigate("/login");
       }
@@ -198,7 +201,7 @@ const ProductsCard = ({ product }) => {
 
   const removeFavourite = async () => {
     if (!product?._id) return;
-    
+
     if (!isAuthenticated()) {
       dispatch(
         openSnackbar({
@@ -212,7 +215,7 @@ const ProductsCard = ({ product }) => {
 
     setFavoriteLoading(true);
     const token = localStorage.getItem("foodeli-app-token");
-    
+
     try {
       await deleteFromFavourite(token, { productId: product._id });
       setFavorite(false);
@@ -226,10 +229,13 @@ const ProductsCard = ({ product }) => {
       console.error("Remove from favorite error:", err);
       const errorDetails = handleApiError(err);
       dispatch(openSnackbar(errorDetails));
-      
+
       // If authentication error, redirect to login
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        localStorage.removeItem("foodeli-app-token")
+      if (
+        err.response &&
+        (err.response.status === 401 || err.response.status === 403)
+      ) {
+        localStorage.removeItem("foodeli-app-token");
         navigate("/login");
       }
     } finally {
@@ -239,24 +245,27 @@ const ProductsCard = ({ product }) => {
 
   const checkFavorite = useCallback(async () => {
     if (!product?._id) return;
-    
+
     // Only check favorites if user is logged in
     const token = localStorage.getItem("foodeli-app-token");
     if (!token) return;
-    
+
     setFavoriteLoading(true);
-    
+
     try {
       const res = await getFavourite(token);
       const favoriteItems = res.data || [];
-      const isFavorite = favoriteItems.some(fav => fav._id === product._id);
+      const isFavorite = favoriteItems.some((fav) => fav._id === product._id);
       setFavorite(isFavorite);
     } catch (err) {
       console.error("Error checking favorites:", err);
       // Don't show error to user as this is a background operation
-      
+
       // If token expired or invalid, clear it
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+      if (
+        err.response &&
+        (err.response.status === 401 || err.response.status === 403)
+      ) {
         localStorage.removeItem("foodeli-app-token");
       }
     } finally {
@@ -302,9 +311,12 @@ const ProductsCard = ({ product }) => {
       console.error("Add to cart error:", err);
       const errorDetails = handleApiError(err);
       dispatch(openSnackbar(errorDetails));
-      
+
       // If authentication error, redirect to login
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+      if (
+        err.response &&
+        (err.response.status === 401 || err.response.status === 403)
+      ) {
         localStorage.removeItem("foodeli-app-token");
         navigate("/login");
       }
@@ -339,7 +351,7 @@ const ProductsCard = ({ product }) => {
               <FavoriteBorder sx={{ fontSize: "20px" }} />
             )}
           </MenuItem>
-          <MenuItem 
+          <MenuItem
             onClick={(e) => {
               e.stopPropagation(); // Prevent navigation when clicking on cart icon
               if (!cartLoading && product?._id) {
@@ -362,8 +374,8 @@ const ProductsCard = ({ product }) => {
         <Title>{product?.name}</Title>
         <Desc>{product?.desc}</Desc>
         <Price>
-          ${product?.price?.org} <Span>${product?.price?.mrp}</Span>
-          <Percent> (${product?.price?.off}% Off) </Percent>
+          ₦{product?.price?.org} <Span>₦{product?.price?.mrp}</Span>
+          <Percent> ({product?.price?.off}% Off) </Percent>
         </Price>
       </Details>
     </Card>

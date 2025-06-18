@@ -2,10 +2,7 @@ import { CircularProgress, Rating } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import Button from "../components/Button"; // Make sure path is correct
-import {
-  FavoriteBorderOutlined,
-  FavoriteRounded,
-} from "@mui/icons-material";
+import { FavoriteBorderOutlined, FavoriteRounded } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   addToCart,
@@ -194,7 +191,7 @@ const FoodDetails = () => {
         setFavoriteLoading(false);
         return;
       }
-      
+
       const res = await getFavourite(token);
       const isFavorite = res.data?.some((favorite) => favorite._id === id);
       setFavorite(isFavorite);
@@ -226,7 +223,7 @@ const FoodDetails = () => {
         navigate("/login");
         return;
       }
-      
+
       await addToCart(token, { productId: id, quantity: 1 });
       setCartLoading(false);
       navigate("/cart");
@@ -244,7 +241,7 @@ const FoodDetails = () => {
       ) : (
         <Wrapper>
           <ImagesWrapper>
-            <Image src={product?.img} alt={product?.name || 'Food item'} />
+            <Image src={product?.img} alt={product?.name || "Food item"} />
           </ImagesWrapper>
           <Details>
             <div>
@@ -252,8 +249,8 @@ const FoodDetails = () => {
             </div>
             <Rating value={3.5} readOnly />
             <Price>
-              ₹{product?.price?.org} <Span>₹{product?.price?.mrp}</Span>{" "}
-              <Percent> (₹{product?.price?.off}% Off) </Percent>
+              ₦{product?.price?.org} <Span>₦{product?.price?.mrp}</Span>{" "}
+              <Percent> (₦{product?.price?.off}% Off) </Percent>
             </Price>
 
             <Desc>{product?.desc}</Desc>

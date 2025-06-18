@@ -62,7 +62,7 @@ const OrderHeader = styled.div`
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid ${({ theme }) => theme.text_secondary + "20"};
-  
+
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
@@ -85,17 +85,17 @@ const OrderStatus = styled.div`
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
-  background: ${({ status, theme }) => 
-    status === "Delivered" 
-      ? theme.primary + "20" 
-      : status === "Cancelled" 
-      ? "#ff000020" 
+  background: ${({ status, theme }) =>
+    status === "Delivered"
+      ? theme.primary + "20"
+      : status === "Cancelled"
+      ? "#ff000020"
       : "#ffa50020"};
-  color: ${({ status, theme }) => 
-    status === "Delivered" 
-      ? theme.primary 
-      : status === "Cancelled" 
-      ? "#ff0000" 
+  color: ${({ status, theme }) =>
+    status === "Delivered"
+      ? theme.primary
+      : status === "Cancelled"
+      ? "#ff0000"
       : "#ffa500"};
 `;
 
@@ -122,7 +122,7 @@ const ProductItem = styled.div`
   padding: 12px;
   border-radius: 8px;
   background: ${({ theme }) => theme.bg};
-  
+
   @media (max-width: 600px) {
     flex-direction: column;
     align-items: flex-start;
@@ -186,7 +186,13 @@ const EmptyOrders = styled.div`
 `;
 
 const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const options = {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
@@ -233,7 +239,7 @@ const Orders = () => {
     <Container>
       <Section>
         <Title $center>Your Orders</Title>
-        
+
         {loading ? (
           <CircularProgress />
         ) : orders.length === 0 ? (
@@ -243,31 +249,44 @@ const Orders = () => {
             {orders.map((order) => (
               <OrderCard key={order._id}>
                 <OrderHeader>
-                  <OrderId>Order ID: #{order._id.substring(order._id.length - 8)}</OrderId>
+                  <OrderId>
+                    Order ID: #{order._id.substring(order._id.length - 8)}
+                  </OrderId>
                   <OrderDate>{formatDate(order.createdAt)}</OrderDate>
-                  <OrderStatus status={order.status}>{order.status}</OrderStatus>
+                  <OrderStatus status={order.status}>
+                    {order.status}
+                  </OrderStatus>
                 </OrderHeader>
-                
+
                 <OrderDetails>
                   <Address>
                     <strong>Delivery Address:</strong> {order.address}
                   </Address>
-                  
+
                   <ProductList>
                     {order.products.map((item) => (
                       <ProductItem key={item.product._id}>
-                        <ProductImg src={item.product.img} alt={item.product.name} />
+                        <ProductImg
+                          src={item.product.img}
+                          alt={item.product.name}
+                        />
                         <ProductInfo>
                           <ProductName>{item.product.name}</ProductName>
                           <ProductDesc>{item.product.desc}</ProductDesc>
-                          <ProductQuantity>Quantity: {item.quantity}</ProductQuantity>
+                          <ProductQuantity>
+                            Quantity: {item.quantity}
+                          </ProductQuantity>
                         </ProductInfo>
-                        <ProductPrice>${(item.product.price.org * item.quantity).toFixed(2)}</ProductPrice>
+                        <ProductPrice>
+                          ₦{(item.product.price.org * item.quantity).toFixed(2)}
+                        </ProductPrice>
                       </ProductItem>
                     ))}
                   </ProductList>
-                  
-                  <TotalAmount>Total: ${Number(order.total_amount).toFixed(2)}</TotalAmount>
+
+                  <TotalAmount>
+                    Total: ₦{Number(order.total_amount).toFixed(2)}
+                  </TotalAmount>
                 </OrderDetails>
               </OrderCard>
             ))}

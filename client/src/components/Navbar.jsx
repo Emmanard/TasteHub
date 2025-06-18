@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { Link as LinkR, NavLink } from "react-router-dom";
-import LogoImg from "../utils/Images/Image_fx.jpg";
+// import { ReactComponent as Logo } from "../utils/Images/logo.svg";
 import {
   FavoriteBorder,
   MenuRounded,
@@ -46,9 +46,9 @@ const NavLogo = styled(LinkR)`
   text-decoration: none;
   color: inherit;
 `;
-const Logo = styled.img`
-  height: 34px;
-`;
+// const Logo = styled.img`
+//   height: 34px;
+// `;
 const NavItems = styled.ul`
   width: 100%;
   display: flex;
@@ -155,7 +155,23 @@ const Navbar = ({ setOpenAuth, openAuth, currentUser }) => {
           <MenuRounded style={{ color: "inherit" }} />
         </MobileIcon>
         <NavLogo to="/">
-          <Logo src={LogoImg} />
+          <svg
+            width="100"
+            height="60"
+            viewBox="0 0 200 60"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <text
+              x="10"
+              y="40"
+              font-family="Verdana, Geneva, sans-serif"
+              font-size="32"
+              fill="#F25B3E"
+              font-weight="bold"
+            >
+              TasteHub
+            </text>
+          </svg>
         </NavLogo>
 
         <MobileIcons>

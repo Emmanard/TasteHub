@@ -12,7 +12,7 @@ const Container = styled.div`
   height: 100%;
   overflow-y: scroll;
   display: flex;
-  align-items: center;
+  align-items: start;
   flex-direction: row;
   gap: 30px;
   @media (max-width: 700px) {
@@ -105,22 +105,30 @@ const FoodListing = () => {
   const getFilteredProductsData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAllProducts(selectedCategories);
-      console.log("Fetched products:", res.data); // ADD THIS
-      setProducts(res.data);
+      const res = await getAllProducts(); // Fetch all without sending selectedCategories
+
+      let filtered = res.data;
+
+      if (selectedCategories.length > 0) {
+        filtered = res.data.filter((product) =>
+          product.category.some((cat) => selectedCategories.includes(cat))
+        );
+      }
+
+      setProducts(filtered);
     } catch (error) {
       console.error("Failed to fetch products:", error);
     } finally {
       setLoading(false);
     }
-  }, [priceRange, selectedCategories]);
+  }, [selectedCategories]);
 
   // Set initial category when component mounts or URL changes
   useEffect(() => {
     if (categoryFromUrl && !selectedCategories.includes(categoryFromUrl)) {
       setSelectedCategories([categoryFromUrl]);
     }
-  }, [categoryFromUrl]);
+  }, [categoryFromUrl, selectedCategories]);
 
   useEffect(() => {
     getFilteredProductsData();
