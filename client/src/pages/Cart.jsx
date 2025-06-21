@@ -171,14 +171,22 @@ const Cart = () => {
     setLoading(true);
     const token = localStorage.getItem("foodeli-app-token");
     await getCart(token).then((res) => {
-      setProducts(res.data);
+      // Filter out items with null/undefined products
+      const validProducts = res.data?.filter(item => item && item.product && item.product._id) || [];
+      setProducts(validProducts);
       setLoading(false);
     });
   };
 
   const calculateSubtotal = () => {
     return products.reduce(
-      (total, item) => total + item.quantity * item?.product?.price?.org,
+      (total, item) => {
+        // Add null checks for safe calculation
+        if (item && item.product && item.product.price && item.quantity) {
+          return total + item.quantity * item.product.price.org;
+        }
+        return total;
+      },
       0
     );
   };
@@ -312,7 +320,7 @@ const Cart = () => {
                           </Details>
                         </Product>
                       </TableItem>
-                      <TableItem>₦{item?.product?.price?.org}</TableItem>
+                     
                       <TableItem>
                         <Counter>
                           <div
