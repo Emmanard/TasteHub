@@ -217,11 +217,11 @@ const Cart = () => {
       }
 
       const token = localStorage.getItem("foodeli-app-token");
-      const totalAmount = calculateSubtotal().toFixed(2);
+      
       const orderDetails = {
         products,
         address: convertAddressToString(deliveryDetails),
-        totalAmount,
+        totalAmount: Math.round(calculateSubtotal() * 100), // Convert to kobo for backend
       };
 
       await placeOrder(token, orderDetails);
@@ -320,7 +320,9 @@ const Cart = () => {
                           </Details>
                         </Product>
                       </TableItem>
-                     
+                      <TableItem>
+                        ₦{item?.product?.price?.org?.toFixed(2)}
+                      </TableItem>
                       <TableItem>
                         <Counter>
                           <div
@@ -341,8 +343,7 @@ const Cart = () => {
                         </Counter>
                       </TableItem>
                       <TableItem>
-                        ₦
-                        {(item.quantity * item?.product?.price?.org).toFixed(2)}
+                        ₦{(item.quantity * item?.product?.price?.org).toFixed(2)}
                       </TableItem>
                       <TableItem>
                         <DeleteOutline

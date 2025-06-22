@@ -211,7 +211,7 @@ export const getAllCartItems = async (req, res, next) => {
   }
 };
 
-// Orders
+// Updated placeOrder function to integrate with Paystack payment
 export const placeOrder = async (req, res, next) => {
   try {
     const { products, address, totalAmount } = req.body;
@@ -222,37 +222,68 @@ export const placeOrder = async (req, res, next) => {
       return next(createError(404, "User not found"));
     }
 
+    // Create order with initial status
     const order = new Orders({
       products,
       user: userId,
       total_amount: totalAmount,
       address,
+      status: 'Pending Payment', // Initial status
+      payment: {
+        status: 'pending',
+        amount: totalAmount,
+        reference: null,
+        paystack_reference: null,
+        payment_method: null,
+        paid_at: null,
+        gateway_response: null
+      }
     });
 
     await order.save();
     
-    // Clear the user's cart after placing the order
-    user.cart = [];
-    await user.save();
+    // DON'T clear cart yet - wait for successful payment
+    // user.cart = []; // Remove this line
+    // await user.save(); // Remove this line
     
     return res.status(200).json({
-      message: "Order placed successfully", 
-      order
+      message: "Order created successfully. Proceed to payment.", 
+      order,
+      orderId: order._id // Return orderId for payment initialization
     });
   } catch (err) {
     return next(err);
   }
 };
 
-export const getAllOrders = async (req, res, next) => {
+// Add a new function to handle successful payment completion
+export const completeOrder = async (req, res, next) => {
   try {
+    const { orderId } = req.body;
     const userId = req.user.id;
     
-    const orders = await Orders.find({ user: userId })
-      .populate("products.product")
-      .sort({ createdAt: -1 });
-      
-    return res.status(200).json(orders);
+    // Find the order and verify it belongs to the user
+    const order = await Orders.findOne({ _id: orderId, user: userId });
+    if (!order) {
+      return next(createError(404, "Order not found"));
+    }
+    
+    // Check if payment is successful
+    if (order.payment.status !== 'success') {
+      return next(createError(400, "Payment not completed"));
+    }
+    
+    // Now clear the user's cart after successful payment
+    const user = await User.findById(userId);
+    if (user) {
+      user.cart = [];
+      await user.save();
+    }
+    
+    return res.status(200).json({
+      message: "Order completed successfully",
+      order
+    });
   } catch (err) {
     return next(err);
   }

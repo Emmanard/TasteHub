@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const OrderSchema = new mongoose.Schema(
@@ -32,8 +31,33 @@ const OrderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Payment Done", "Processing", "Delivered", "Cancelled"],
-      default: "Payment Done",
+      enum: ["Pending Payment", "Payment Done", "Processing", "Delivered", "Cancelled"],
+      default: "Pending Payment",
+    },
+    // Paystack payment fields
+    payment: {
+      reference: {
+        type: String,
+        required: true,
+        unique: true,
+      },
+      status: {
+        type: String,
+        enum: ["pending", "success", "failed"],
+        default: "pending",
+      },
+      paystack_reference: {
+        type: String,
+      },
+      payment_method: {
+        type: String,
+      },
+      paid_at: {
+        type: Date,
+      },
+      gateway_response: {
+        type: String,
+      },
     },
   },
   { timestamps: true }
