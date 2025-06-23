@@ -8,6 +8,7 @@ import Authentication from "./pages/Authentication";
 import Favourites from "./pages/Favourites";
 import Cart from "./pages/Cart";
 import FoodDetails from "./pages/FoodDetails";
+import PaymentPage from "./pages/PaymentPage";
 import FoodListing from "./pages/FoodListing";
 import SignIn from "./components/SignIn";
 import Orders from "./pages/Orders";
@@ -38,6 +39,7 @@ function App() {
             <Route path="/dishes" exact element={<FoodListing />} />
             <Route path="/login" exact element={<SignIn/>} />
             <Route path="/orders" exact element={<Orders />} />
+            <Route path="/payment" element={<PaymentPage />} />
 
           </Routes>
           {openAuth && (

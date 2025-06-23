@@ -185,6 +185,16 @@ const EmptyOrders = styled.div`
   color: ${({ theme }) => theme.text_secondary};
 `;
 
+const ErrorMessage = styled.div`
+  width: 100%;
+  padding: 20px;
+  text-align: center;
+  color: ${({ theme }) => theme.text_secondary};
+  background: ${({ theme }) => theme.bg_light};
+  border-radius: 8px;
+  border: 1px solid #ff000030;
+`;
+
 const formatDate = (dateString) => {
   const options = {
     year: "numeric",
@@ -200,10 +210,12 @@ const Orders = () => {
   const dispatch = useDispatch();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
+      setError(null);
       try {
         const token = localStorage.getItem("foodeli-app-token");
         if (!token) {
@@ -218,9 +230,28 @@ const Orders = () => {
         }
 
         const response = await getOrders(token);
-        setOrders(response.data);
+        
+        // Debug: Log the response to see its structure
+        console.log("API Response:", response);
+        
+        // Handle different possible response structures
+        let ordersData = [];
+        if (response?.data) {
+          if (Array.isArray(response.data)) {
+            ordersData = response.data;
+          } else if (Array.isArray(response.data.orders)) {
+            ordersData = response.data.orders;
+          } else if (response.data.orders) {
+            ordersData = [response.data.orders];
+          }
+        } else if (Array.isArray(response)) {
+          ordersData = response;
+        }
+        
+        setOrders(ordersData);
       } catch (error) {
         console.error("Error fetching orders:", error);
+        setError("Failed to load orders. Please try again.");
         dispatch(
           openSnackbar({
             message: "Failed to load orders. Please try again.",
@@ -242,17 +273,19 @@ const Orders = () => {
 
         {loading ? (
           <CircularProgress />
-        ) : orders.length === 0 ? (
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : !Array.isArray(orders) || orders.length === 0 ? (
           <EmptyOrders>You haven't placed any orders yet.</EmptyOrders>
         ) : (
           <OrdersList>
             {orders.map((order) => (
-              <OrderCard key={order._id}>
+              <OrderCard key={order._id || order.id}>
                 <OrderHeader>
                   <OrderId>
-                    Order ID: #{order._id.substring(order._id.length - 8)}
+                    Order ID: #{(order._id || order.id)?.substring((order._id || order.id).length - 8)}
                   </OrderId>
-                  <OrderDate>{formatDate(order.createdAt)}</OrderDate>
+                  <OrderDate>{formatDate(order.createdAt || order.created_at)}</OrderDate>
                   <OrderStatus status={order.status}>
                     {order.status}
                   </OrderStatus>
@@ -264,28 +297,31 @@ const Orders = () => {
                   </Address>
 
                   <ProductList>
-                    {order.products.map((item) => (
-                      <ProductItem key={item.product._id}>
+                    {(order.products || order.items || []).map((item, index) => (
+                      <ProductItem key={item.product?._id || item.product?.id || `item-${index}`}>
                         <ProductImg
-                          src={item.product.img}
-                          alt={item.product.name}
+                          src={item.product?.img || item.product?.image}
+                          alt={item.product?.name || 'Product'}
+                          onError={(e) => {
+                            e.target.src = '/placeholder-image.png'; // Fallback image
+                          }}
                         />
                         <ProductInfo>
-                          <ProductName>{item.product.name}</ProductName>
-                          <ProductDesc>{item.product.desc}</ProductDesc>
+                          <ProductName>{item.product?.name || 'Unknown Product'}</ProductName>
+                          <ProductDesc>{item.product?.desc || item.product?.description || ''}</ProductDesc>
                           <ProductQuantity>
-                            Quantity: {item.quantity}
+                            Quantity: {item.quantity || 1}
                           </ProductQuantity>
                         </ProductInfo>
                         <ProductPrice>
-                          ₦{(item.product.price.org * item.quantity).toFixed(2)}
+                          ₦{((item.product?.price?.org || item.product?.price || 0) * (item.quantity || 1)).toFixed(2)}
                         </ProductPrice>
                       </ProductItem>
                     ))}
                   </ProductList>
 
                   <TotalAmount>
-                    Total: ₦{Number(order.total_amount).toFixed(2)}
+                    Total: ₦{Number(order.total_amount || order.totalAmount || order.total || 0).toFixed(2)}
                   </TotalAmount>
                 </OrderDetails>
               </OrderCard>

@@ -8,6 +8,7 @@
     "@mui/icons-material": "^5.15.14",
     "@mui/lab": "^5.0.0-alpha.169",
     "@mui/material": "^5.15.14",
+    "@paystack/inline-js": "^2.22.6",
     "@reduxjs/toolkit": "^2.2.1",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",

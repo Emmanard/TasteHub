@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import TextInput from "../components/TextInput";
 import Button from "../components/Button";
-import { addToCart, deleteFromCart, getCart, placeOrder } from "../api";
+import { addToCart, deleteFromCart, getCart } from "../api";
 import { useNavigate } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
 import { useDispatch } from "react-redux";
@@ -216,27 +216,37 @@ const Cart = () => {
         return;
       }
 
+      // Get current user data from localStorage or context
       const token = localStorage.getItem("foodeli-app-token");
       
-      const orderDetails = {
+      // Prepare order data for payment page
+      const orderData = {
         products,
         address: convertAddressToString(deliveryDetails),
-        totalAmount: Math.round(calculateSubtotal() * 100), // Convert to kobo for backend
+        totalAmount: calculateSubtotal(), // Keep in Naira, backend will handle conversion
       };
 
-      await placeOrder(token, orderDetails);
-      dispatch(
-        openSnackbar({
-          message: "Order placed successfully",
-          severity: "success",
-        })
-      );
+      // Prepare user data for payment page
+      const userData = {
+        email: deliveryDetails.emailAddress,
+        firstName: deliveryDetails.firstName,
+        lastName: deliveryDetails.lastName,
+        phoneNumber: deliveryDetails.phoneNumber,
+      };
+
+      // Navigate to payment page with order and user data
+      navigate('/payment', {
+        state: {
+          orderData,
+          user: userData,
+        },
+      });
+
       setButtonLoad(false);
-      setReload(!reload);
     } catch (err) {
       dispatch(
         openSnackbar({
-          message: "Failed to place order. Please try again.",
+          message: "Failed to proceed to payment. Please try again.",
           severity: "error",
         })
       );
@@ -420,7 +430,7 @@ const Cart = () => {
                     />
                   </Delivery>
                   <Button
-                    text={buttonLoad ? "Please wait..." : "Place Order"}
+                    text={buttonLoad ? "Please wait..." : "Proceed to Payment"}
                     onClick={PlaceOrder}
                     disabled={buttonLoad}
                   />

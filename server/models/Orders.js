@@ -38,8 +38,13 @@ const OrderSchema = new mongoose.Schema(
     payment: {
       reference: {
         type: String,
+        // Remove required and unique - these will be set during payment initialization
+        // required: true,
+        // unique: true,
+      },
+      amount: {
+        type: Number,
         required: true,
-        unique: true,
       },
       status: {
         type: String,

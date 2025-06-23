@@ -40,6 +40,7 @@ export const searchProducts = async (searchParams) => {
     throw error;
   }
 };
+
 // Cart
 export const getCart = async (token) =>
   await API.get(`/user/cart`, {
@@ -84,6 +85,27 @@ export const getOrders = async (token) =>
   await API.get(`/user/order`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+// NEW: Complete order after payment
+export const completeOrder = async (token, data) =>
+  await API.post(`/user/order/complete`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// NEW: Payment routes
+export const initializePayment = async (token, data) =>
+  await API.post(`/user/payment/initialize`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+export const verifyPayment = async (token, reference) =>
+  await API.get(`/user/payment/verify/${reference}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// Note: Webhook endpoint doesn't need a frontend call as it's called by the payment provider
+// export const handleWebhook = async (data) =>
+//   await API.post(`/user/payment/webhook`, data);
 
 // Error handler helper
 export const handleApiError = (error) => {

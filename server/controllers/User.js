@@ -288,7 +288,36 @@ export const completeOrder = async (req, res, next) => {
     return next(err);
   }
 };
+// Add this after your completeOrder function in controllers/User.js
 
+export const getAllOrders = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find all orders for the current user
+    const orders = await Orders.find({ user: userId })
+      .populate({
+        path: "products.product",
+        model: "Food", // Make sure this matches your Food model name
+      })
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    if (!orders) {
+      return res.status(404).json({
+        message: "No orders found for this user"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Orders retrieved successfully",
+      orders
+    });
+    
+  } catch (err) {
+    console.error("Get all orders error:", err);
+    return next(err);
+  }
+};
 // Favorites
 export const addToFavorites = async (req, res, next) => {
   try {

@@ -1,25 +1,34 @@
 // controllers/paymentController.js
 import https from 'https';
 import crypto from 'crypto';
-import Order from '../models/Order.js';
+import Order from '../models/Orders.js';
 import dotenv from 'dotenv';    
 dotenv.config();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+// Helper function to convert Naira to Kobo
+const convertToKobo = (nairaAmount) => {
+  return Math.round(parseFloat(nairaAmount) * 100);
+};
 
 // Initialize payment
 export const initializePayment = async (req, res) => {
   try {
     const { email, amount, orderId, callback_url } = req.body;
     
+    // Convert amount to kobo (Paystack expects amount in kobo)
+    const amountInKobo = convertToKobo(amount);
+    
     const params = JSON.stringify({
       email,
-      amount: amount, // Paystack expects amount in kobo
+      amount: amountInKobo, // Amount now converted to kobo
       reference: `order_${orderId}_${Date.now()}`,
       callback_url: callback_url || `${process.env.CLIENT_URL}/payment/callback`,
       metadata: {
         orderId,
         userId: req.user.id,
+        originalAmount: amount, // Store original amount for reference
       }
     });
 
@@ -48,12 +57,18 @@ export const initializePayment = async (req, res) => {
           // Update order with payment reference
           await Order.findByIdAndUpdate(orderId, {
             'payment.reference': response.data.reference,
-            'payment.status': 'pending'
+            'payment.status': 'pending',
+            'payment.amount': amount, // Store original amount in Naira
+            'payment.amount_kobo': amountInKobo // Store kobo amount for reference
           });
 
           res.json({
             success: true,
-            data: response.data
+            data: {
+              ...response.data,
+              amount_naira: amount, // Include original amount for frontend reference
+              amount_kobo: amountInKobo
+            }
           });
         } else {
           res.status(400).json({
@@ -110,6 +125,9 @@ export const verifyPayment = async (req, res) => {
         const response = JSON.parse(data);
         
         if (response.status && response.data.status === 'success') {
+          // Convert amount back to Naira for display
+          const amountInNaira = response.data.amount / 100;
+          
           // Update order payment status
           const order = await Order.findOneAndUpdate(
             { 'payment.reference': reference },
@@ -119,6 +137,8 @@ export const verifyPayment = async (req, res) => {
               'payment.payment_method': response.data.authorization.channel,
               'payment.paid_at': new Date(),
               'payment.gateway_response': response.data.gateway_response,
+              'payment.amount': amountInNaira, // Store amount in Naira
+              'payment.amount_kobo': response.data.amount, // Store kobo amount
               'status': 'Payment Done'
             },
             { new: true }
@@ -127,7 +147,10 @@ export const verifyPayment = async (req, res) => {
           res.json({
             success: true,
             message: 'Payment verified successfully',
-            data: response.data,
+            data: {
+              ...response.data,
+              amount_naira: amountInNaira, // Include Naira amount for frontend
+            },
             order
           });
         } else {
@@ -179,7 +202,8 @@ export const handleWebhook = async (req, res) => {
       const event = req.body;
 
       if (event.event === 'charge.success') {
-        const { reference, status } = event.data;
+        const { reference, status, amount } = event.data;
+        const amountInNaira = amount / 100; // Convert kobo to Naira
         
         await Order.findOneAndUpdate(
           { 'payment.reference': reference },
@@ -187,6 +211,8 @@ export const handleWebhook = async (req, res) => {
             'payment.status': status === 'success' ? 'success' : 'failed',
             'payment.paystack_reference': reference,
             'payment.paid_at': new Date(),
+            'payment.amount': amountInNaira, // Store in Naira
+            'payment.amount_kobo': amount, // Store in kobo
             'status': status === 'success' ? 'Payment Done' : 'Cancelled'
           }
         );
