@@ -211,7 +211,6 @@ export const getAllCartItems = async (req, res, next) => {
   }
 };
 
-// Updated placeOrder function to integrate with Paystack payment
 export const placeOrder = async (req, res, next) => {
   try {
     const { products, address, totalAmount } = req.body;
@@ -222,13 +221,29 @@ export const placeOrder = async (req, res, next) => {
       return next(createError(404, "User not found"));
     }
 
-    // Create order with initial status
+    // Check for existing pending orders to prevent duplicates
+    const existingPendingOrder = await Orders.findOne({
+      user: userId,
+      status: 'Pending Payment',
+      createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) } // Within last 10 minutes
+    });
+
+    if (existingPendingOrder) {
+      // Return existing order instead of creating new one
+      return res.status(200).json({
+        message: "Using existing pending order", 
+        order: existingPendingOrder,
+        orderId: existingPendingOrder._id
+      });
+    }
+
+    // Create new order with unique identifier
     const order = new Orders({
       products,
       user: userId,
       total_amount: totalAmount,
       address,
-      status: 'Pending Payment', // Initial status
+      status: 'Pending Payment',
       payment: {
         status: 'pending',
         amount: totalAmount,
@@ -242,40 +257,35 @@ export const placeOrder = async (req, res, next) => {
 
     await order.save();
     
-    // DON'T clear cart yet - wait for successful payment
-    // user.cart = []; // Remove this line
-    // await user.save(); // Remove this line
-    
     return res.status(200).json({
       message: "Order created successfully. Proceed to payment.", 
       order,
-      orderId: order._id // Return orderId for payment initialization
+      orderId: order._id
     });
   } catch (err) {
     return next(err);
   }
 };
 
-// Add a new function to handle successful payment completion
 export const completeOrder = async (req, res, next) => {
   try {
     const { orderId } = req.body;
     const userId = req.user.id;
     
-    // Find the order and verify it belongs to the user
-    const order = await Orders.findOne({ _id: orderId, user: userId });
+    // FIX: Use _id instead of id
+    const order = await Orders.findOne({ 
+      _id: orderId, // Changed from 'id' to '_id'
+      user: userId,
+      'payment.status': 'success'
+    });
+    
     if (!order) {
-      return next(createError(404, "Order not found"));
+      return next(createError(404, "Order not found or payment not completed"));
     }
     
-    // Check if payment is successful
-    if (order.payment.status !== 'success') {
-      return next(createError(400, "Payment not completed"));
-    }
-    
-    // Now clear the user's cart after successful payment
+    // Clear user's cart only after successful payment verification
     const user = await User.findById(userId);
-    if (user) {
+    if (user && user.cart.length > 0) {
       user.cart = [];
       await user.save();
     }
@@ -288,7 +298,7 @@ export const completeOrder = async (req, res, next) => {
     return next(err);
   }
 };
-// Add this after your completeOrder function in controllers/User.js
+
 
 export const getAllOrders = async (req, res, next) => {
   try {

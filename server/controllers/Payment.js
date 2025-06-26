@@ -8,27 +8,43 @@ dotenv.config();
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
 // Helper function to convert Naira to Kobo
-const convertToKobo = (nairaAmount) => {
-  return Math.round(parseFloat(nairaAmount) * 100);
-};
-
-// Initialize payment
 export const initializePayment = async (req, res) => {
   try {
     const { email, amount, orderId, callback_url } = req.body;
     
-    // Convert amount to kobo (Paystack expects amount in kobo)
+    // Validate order exists and belongs to user
+    const order = await Order.findOne({ _id: orderId, user: req.user.id });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Prevent duplicate payment initialization
+    if (order.payment.reference && order.payment.status === 'pending') {
+      return res.json({
+        success: true,
+        message: 'Payment already initialized',
+        data: {
+          authorization_url: `https://checkout.paystack.com/${order.payment.reference}`,
+          reference: order.payment.reference
+        }
+      });
+    }
+
     const amountInKobo = convertToKobo(amount);
+    const paymentReference = `order_${orderId}_${Date.now()}`;
     
     const params = JSON.stringify({
       email,
-      amount: amountInKobo, // Amount now converted to kobo
-      reference: `order_${orderId}_${Date.now()}`,
+      amount: amountInKobo,
+      reference: paymentReference,
       callback_url: callback_url || `${process.env.CLIENT_URL}/payment/callback`,
       metadata: {
         orderId,
         userId: req.user.id,
-        originalAmount: amount, // Store original amount for reference
+        originalAmount: amount,
       }
     });
 
@@ -51,36 +67,56 @@ export const initializePayment = async (req, res) => {
       });
 
       paystackRes.on('end', async () => {
-        const response = JSON.parse(data);
-        
-        if (response.status) {
-          // Update order with payment reference
-          await Order.findByIdAndUpdate(orderId, {
-            'payment.reference': response.data.reference,
-            'payment.status': 'pending',
-            'payment.amount': amount, // Store original amount in Naira
-            'payment.amount_kobo': amountInKobo // Store kobo amount for reference
-          });
+        try {
+          const response = JSON.parse(data);
+          
+          if (response.status) {
+            // Update the SPECIFIC order with payment reference
+            const updatedOrder = await Order.findOneAndUpdate(
+              { _id: orderId, user: req.user.id }, // More specific query
+              {
+                'payment.reference': response.data.reference,
+                'payment.status': 'pending',
+                'payment.amount': amount,
+                'payment.amount_kobo': amountInKobo,
+                'payment.initialized_at': new Date()
+              },
+              { new: true }
+            );
 
-          res.json({
-            success: true,
-            data: {
-              ...response.data,
-              amount_naira: amount, // Include original amount for frontend reference
-              amount_kobo: amountInKobo
+            if (!updatedOrder) {
+              return res.status(404).json({
+                success: false,
+                message: 'Failed to update order with payment reference'
+              });
             }
-          });
-        } else {
-          res.status(400).json({
+
+            res.json({
+              success: true,
+              data: {
+                ...response.data,
+                amount_naira: amount,
+                amount_kobo: amountInKobo
+              }
+            });
+          } else {
+            res.status(400).json({
+              success: false,
+              message: response.message
+            });
+          }
+        } catch (error) {
+          console.error('Error processing Paystack response:', error);
+          res.status(500).json({
             success: false,
-            message: response.message
+            message: 'Payment initialization failed'
           });
         }
       });
     });
 
     paystackReq.on('error', (error) => {
-      console.error(error);
+      console.error('Paystack request error:', error);
       res.status(500).json({
         success: false,
         message: 'Payment initialization failed'
@@ -91,7 +127,7 @@ export const initializePayment = async (req, res) => {
     paystackReq.end();
 
   } catch (error) {
-    console.error(error);
+    console.error('Initialize payment error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -99,10 +135,25 @@ export const initializePayment = async (req, res) => {
   }
 };
 
-// Verify payment
+// Fixed verify payment to prevent duplicate orders
 export const verifyPayment = async (req, res) => {
   try {
     const { reference } = req.params;
+
+    // First check if we already processed this payment
+    const existingOrder = await Order.findOne({ 
+      'payment.reference': reference,
+      'payment.status': 'success'
+    });
+
+    if (existingOrder) {
+      return res.json({
+        success: true,
+        message: 'Payment already verified',
+        data: { status: 'success' },
+        order: existingOrder
+      });
+    }
 
     const options = {
       hostname: 'api.paystack.co',
@@ -122,48 +173,88 @@ export const verifyPayment = async (req, res) => {
       });
 
       paystackRes.on('end', async () => {
-        const response = JSON.parse(data);
-        
-        if (response.status && response.data.status === 'success') {
-          // Convert amount back to Naira for display
-          const amountInNaira = response.data.amount / 100;
+        try {
+          const response = JSON.parse(data);
           
-          // Update order payment status
-          const order = await Order.findOneAndUpdate(
-            { 'payment.reference': reference },
-            {
-              'payment.status': 'success',
-              'payment.paystack_reference': response.data.reference,
-              'payment.payment_method': response.data.authorization.channel,
-              'payment.paid_at': new Date(),
-              'payment.gateway_response': response.data.gateway_response,
-              'payment.amount': amountInNaira, // Store amount in Naira
-              'payment.amount_kobo': response.data.amount, // Store kobo amount
-              'status': 'Payment Done'
-            },
-            { new: true }
-          );
+          if (response.status && response.data.status === 'success') {
+            const amountInNaira = response.data.amount / 100;
+            
+            // Use atomic update to prevent race conditions
+            const order = await Order.findOneAndUpdate(
+              { 
+                'payment.reference': reference,
+                'payment.status': { $ne: 'success' } // Only update if not already successful
+              },
+              {
+                'payment.status': 'success',
+                'payment.paystack_reference': response.data.reference,
+                'payment.payment_method': response.data.authorization.channel,
+                'payment.paid_at': new Date(),
+                'payment.gateway_response': response.data.gateway_response,
+                'payment.amount': amountInNaira,
+                'payment.amount_kobo': response.data.amount,
+                'status': 'Payment Done'
+              },
+              { new: true }
+            );
 
-          res.json({
-            success: true,
-            message: 'Payment verified successfully',
-            data: {
-              ...response.data,
-              amount_naira: amountInNaira, // Include Naira amount for frontend
-            },
-            order
-          });
-        } else {
-          // Update order as failed
-          await Order.findOneAndUpdate(
-            { 'payment.reference': reference },
-            {
-              'payment.status': 'failed',
-              'status': 'Cancelled'
+            if (!order) {
+              // Order not found or already processed
+              const existingSuccessfulOrder = await Order.findOne({ 
+                'payment.reference': reference,
+                'payment.status': 'success'
+              });
+              
+              if (existingSuccessfulOrder) {
+                return res.json({
+                  success: true,
+                  message: 'Payment already verified',
+                  data: response.data,
+                  order: existingSuccessfulOrder
+                });
+              } else {
+                return res.status(404).json({
+                  success: false,
+                  message: 'Order not found for this payment reference'
+                });
+              }
             }
-          );
 
-          res.status(400).json({
+            // Clean up any duplicate pending orders for the same user
+            await Order.deleteMany({
+              user: order.user,
+              status: 'Pending Payment',
+              _id: { $ne: order._id },
+              createdAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) } // Within last 30 minutes
+            });
+
+            res.json({
+              success: true,
+              message: 'Payment verified successfully',
+              data: {
+                ...response.data,
+                amount_naira: amountInNaira,
+              },
+              order
+            });
+          } else {
+            // Update order as failed
+            await Order.findOneAndUpdate(
+              { 'payment.reference': reference },
+              {
+                'payment.status': 'failed',
+                'status': 'Cancelled'
+              }
+            );
+
+            res.status(400).json({
+              success: false,
+              message: 'Payment verification failed'
+            });
+          }
+        } catch (error) {
+          console.error('Error processing verification response:', error);
+          res.status(500).json({
             success: false,
             message: 'Payment verification failed'
           });
@@ -172,7 +263,7 @@ export const verifyPayment = async (req, res) => {
     });
 
     paystackReq.on('error', (error) => {
-      console.error(error);
+      console.error('Paystack verification error:', error);
       res.status(500).json({
         success: false,
         message: 'Payment verification failed'
@@ -182,13 +273,14 @@ export const verifyPayment = async (req, res) => {
     paystackReq.end();
 
   } catch (error) {
-    console.error(error);
+    console.error('Verify payment error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
     });
   }
 };
+
 
 // Webhook handler for Paystack events
 export const handleWebhook = async (req, res) => {

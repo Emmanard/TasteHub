@@ -12,6 +12,7 @@ import PaymentPage from "./pages/PaymentPage";
 import FoodListing from "./pages/FoodListing";
 import SignIn from "./components/SignIn";
 import Orders from "./pages/Orders";
+import PaymentCallback from "./pages/PaymentCallback";
 import SearchPage from "./pages/SearchPage";
 import { useSelector } from "react-redux";
 
@@ -40,6 +41,7 @@ function App() {
             <Route path="/login" exact element={<SignIn/>} />
             <Route path="/orders" exact element={<Orders />} />
             <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
 
           </Routes>
           {openAuth && (
