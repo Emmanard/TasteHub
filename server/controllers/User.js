@@ -221,10 +221,11 @@ export const placeOrder = async (req, res, next) => {
       return next(createError(404, "User not found"));
     }
 
-    // Check for existing pending orders to prevent duplicates
+    // Check for existing pending orders more strictly
     const existingPendingOrder = await Orders.findOne({
       user: userId,
       status: 'Pending Payment',
+      total_amount: totalAmount, // Also match amount to prevent different orders
       createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) } // Within last 10 minutes
     });
 
@@ -272,26 +273,28 @@ export const completeOrder = async (req, res, next) => {
     const { orderId } = req.body;
     const userId = req.user.id;
     
-    // FIX: Use _id instead of id
-    const order = await Orders.findOne({ 
-      _id: orderId, // Changed from 'id' to '_id'
-      user: userId,
-      'payment.status': 'success'
-    });
+    const order = await Orders.findOneAndUpdate(
+      { 
+        _id: orderId,
+        user: userId,
+        'payment.status': 'success'
+      },
+      {
+        $set: {
+          status: 'Payment Done',
+          updatedAt: new Date()
+        }
+      },
+      { new: true, runValidators: true }
+    );
     
     if (!order) {
       return next(createError(404, "Order not found or payment not completed"));
     }
     
-    // Clear user's cart only after successful payment verification
-    const user = await User.findById(userId);
-    if (user && user.cart.length > 0) {
-      user.cart = [];
-      await user.save();
-    }
-    
     return res.status(200).json({
       message: "Order completed successfully",
+      success: true,
       order
     });
   } catch (err) {

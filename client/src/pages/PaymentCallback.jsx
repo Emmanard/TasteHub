@@ -1,4 +1,3 @@
-// PaymentCallback.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -40,129 +39,88 @@ const Spinner = styled.div`
   }
 `;
 
-const DebugInfo = styled.div`
-  margin-top: 20px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #495057;
-  max-width: 500px;
-  word-break: break-all;
-`;
-
 const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [processing, setProcessing] = useState(true);
   const [message, setMessage] = useState('Processing payment...');
-  const [debugInfo, setDebugInfo] = useState(null);
-  const hasProcessed = useRef(false); // Prevent double processing
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent double execution
-    if (hasProcessed.current) {
-      console.log('Payment callback already processed, skipping...');
-      return;
-    }
+    if (hasProcessed.current) return;
 
     const handleCallback = async () => {
       try {
         hasProcessed.current = true;
         
-        // Get payment parameters from URL
         const reference = searchParams.get('reference');
         const status = searchParams.get('status');
         const trxref = searchParams.get('trxref');
         
         const paymentRef = reference || trxref;
         
-        console.log('Payment callback received:', { reference, status, trxref, paymentRef });
-        
-        // Set debug info
-        setDebugInfo({
-          urlParams: Object.fromEntries(searchParams.entries()),
-          paymentRef,
-          windowType: window.opener ? 'popup' : 'same-window',
-          timestamp: new Date().toISOString()
-        });
-        
         if (!paymentRef) {
           throw new Error('No payment reference found in URL parameters');
         }
 
-        // Check if status indicates failure upfront
-        if (status && status !== 'success') {
-          throw new Error(`Payment status: ${status}`);
+        // Check Paystack status parameter first
+        if (status && status === 'cancelled') {
+          throw new Error('Payment was cancelled by user');
+        }
+        
+        if (status && status === 'failed') {
+          throw new Error('Payment failed');
         }
 
-        // Get order info and token
-        const orderInfo = localStorage.getItem('payment_order_info');
         const token = localStorage.getItem('foodeli-app-token');
-        
         if (!token) {
           throw new Error('Authentication token not found');
         }
-
-        console.log('Order info from localStorage:', orderInfo);
 
         setMessage('Verifying payment with Paystack...');
         
         // Verify payment with backend
         const verifyResponse = await verifyPayment(token, paymentRef);
         
-        console.log('Payment verification response:', verifyResponse.data);
-        
         if (!verifyResponse.data.success) {
           throw new Error(verifyResponse.data.message || 'Payment verification failed');
         }
 
-        setMessage('Payment verified! Completing your order...');
+        setMessage('Payment verified! Processing your order...');
         
-        // Complete order if we have order info
+        // Get order info for completion
+        const orderInfo = localStorage.getItem('payment_order_info');
         let orderCompleted = false;
+        
         if (orderInfo) {
           try {
             const orderData = JSON.parse(orderInfo);
-            console.log('Completing order:', orderData.orderId);
-            
             const completeResponse = await completeOrder(token, { 
               orderId: orderData.orderId 
             });
             
-            console.log('Order completion response:', completeResponse.data);
-            
             if (completeResponse.data.success) {
               orderCompleted = true;
-              // Clean up localStorage
-              localStorage.removeItem('payment_order_info');
-              localStorage.removeItem('payment_success');
-              localStorage.removeItem('payment_failed');
-            } else {
-              console.error('Order completion failed:', completeResponse.data);
             }
           } catch (orderError) {
-            console.error('Error completing order:', orderError);
-            // Don't throw here - payment was successful, just order completion failed
+            console.warn('Order completion failed:', orderError);
           }
         }
 
-        // Handle successful payment
-        setMessage(orderCompleted ? 
-          'Payment successful! Your order has been placed.' : 
-          'Payment successful! Finalizing order...'
-        );
+        // Clean up localStorage
+        localStorage.removeItem('payment_order_info');
+        localStorage.removeItem('payment_success');
+        localStorage.removeItem('payment_failed');
+
+        setMessage('Payment successful! Your order has been placed.');
         
         if (window.opener) {
-          // Popup scenario - notify parent window
-          console.log('Notifying parent window of payment success');
-          
+          // Popup scenario
           localStorage.setItem('payment_success', JSON.stringify({
             reference: paymentRef,
             status: 'success',
-            orderCompleted,
+            orderCompleted: true,
             timestamp: Date.now()
           }));
           
@@ -170,7 +128,7 @@ const PaymentCallback = () => {
             type: 'PAYMENT_SUCCESS',
             reference: paymentRef,
             status: 'success',
-            orderCompleted
+            orderCompleted: true
           }, window.location.origin);
           
           setMessage('Payment successful! Closing window...');
@@ -178,13 +136,11 @@ const PaymentCallback = () => {
             try {
               window.close();
             } catch (e) {
-              console.log('Could not close window automatically');
+              console.warn('Could not close window');
             }
           }, 2000);
         } else {
-          // Same window scenario - redirect directly
-          console.log('Same window scenario - redirecting to orders');
-          
+          // Same window scenario - redirect to orders
           dispatch(
             openSnackbar({
               message: "Payment successful! Your order has been placed.",
@@ -192,51 +148,42 @@ const PaymentCallback = () => {
             })
           );
           
-          setTimeout(() => navigate('/orders'), 2000);
+          // Navigate to orders page
+          setTimeout(() => {
+            navigate('/orders', { replace: true });
+          }, 1500);
         }
         
       } catch (error) {
         console.error('Payment callback error:', error);
-        
         const errorMessage = error.response?.data?.message || error.message || 'Payment processing failed';
         setMessage(`Payment failed: ${errorMessage}`);
         
-        setDebugInfo(prev => ({
-          ...prev,
-          error: {
-            message: error.message,
-            response: error.response?.data,
-            stack: error.stack
-          }
-        }));
-        
         if (window.opener) {
-          // Popup scenario - notify parent window of failure
-          console.log('Notifying parent window of payment failure');
-          
+          // Store failure information
           localStorage.setItem('payment_failed', JSON.stringify({
             reference: searchParams.get('reference') || searchParams.get('trxref'),
-            status: searchParams.get('status') || 'failed',
+            status: 'failed',
             error: errorMessage,
             timestamp: Date.now()
           }));
           
+          // Notify parent window
           window.opener.postMessage({
             type: 'PAYMENT_FAILED',
-            reference: searchParams.get('reference') || searchParams.get('trxref'),
-            status: searchParams.get('status') || 'failed',
-            error: errorMessage
+            error: errorMessage,
+            reference: searchParams.get('reference') || searchParams.get('trxref')
           }, window.location.origin);
           
           setTimeout(() => {
             try {
               window.close();
             } catch (e) {
-              console.log('Could not close window automatically');
+              console.warn('Could not close window');
             }
           }, 3000);
         } else {
-          // Same window scenario - show error and redirect
+          // Same window scenario
           dispatch(
             openSnackbar({
               message: `Payment failed: ${errorMessage}`,
@@ -244,26 +191,23 @@ const PaymentCallback = () => {
             })
           );
           
-          setTimeout(() => navigate('/cart'), 3000);
+          setTimeout(() => {
+            navigate('/cart', { replace: true });
+          }, 2000);
         }
       } finally {
         setProcessing(false);
       }
     };
 
-    // Delay execution slightly to ensure all URL parameters are available
     const timeoutId = setTimeout(handleCallback, 500);
-    
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    return () => clearTimeout(timeoutId);
   }, [searchParams, navigate, dispatch]);
 
-  // Handle case where user manually closes the popup
+  // Handle manual window closure
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (window.opener && processing) {
-        // Notify parent that window is closing unexpectedly
         window.opener.postMessage({
           type: 'PAYMENT_CLOSED',
           reference: searchParams.get('reference') || searchParams.get('trxref')
@@ -283,12 +227,6 @@ const PaymentCallback = () => {
         <Message>
           Redirecting you back to the app...
         </Message>
-      )}
-      {debugInfo && (
-        <DebugInfo>
-          <h4>Debug Information:</h4>
-          <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-        </DebugInfo>
       )}
     </Container>
   );

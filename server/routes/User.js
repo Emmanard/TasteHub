@@ -8,13 +8,13 @@ import {
   getAllOrders,
   getUserFavorites,
   placeOrder,
-  completeOrder, // Add this new function
+  completeOrder,
   removeFromCart,
   removeFromFavorites
 } from "../controllers/User.js";
 import {
   initializePayment,
-  verifyPayment,
+  verifyPayment, 
   handleWebhook
 } from "../controllers/Payment.js"; 
 import express from "express";
@@ -36,13 +36,13 @@ router.get("/favorite", verifyToken, getUserFavorites);
 router.patch("/favorite", verifyToken, removeFromFavorites);
 
 // Order routes
-router.post("/order", verifyToken, placeOrder); // Creates order without payment
+router.post("/order", verifyToken, placeOrder);
 router.get("/order", verifyToken, getAllOrders);
-router.post("/order/complete", verifyToken, completeOrder); // Completes order after payment
+router.post("/order/complete", verifyToken, completeOrder);
 
 // Payment routes
 router.post("/payment/initialize", verifyToken, initializePayment);
 router.get("/payment/verify/:reference", verifyToken, verifyPayment);
-router.post("/payment/webhook", handleWebhook); // No auth needed for webhooks
+router.post("/payment/webhook", handleWebhook);
 
 export default router;

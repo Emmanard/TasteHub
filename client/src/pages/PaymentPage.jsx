@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { openSnackbar } from '../redux/reducers/SnackbarSlice';
@@ -203,33 +203,6 @@ const SecurityNote = styled.div`
   }
 `;
 
-const DebugInfo = styled.div`
-  width: 100%;
-  max-width: 400px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #495057;
-  
-  h4 {
-    margin: 0 0 8px 0;
-    color: #343a40;
-    font-family: inherit;
-  }
-  
-  pre {
-    background: white;
-    padding: 8px;
-    border-radius: 4px;
-    overflow-x: auto;
-    margin: 4px 0;
-  }
-`;
-
 const PaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -241,10 +214,21 @@ const PaymentPage = () => {
   const [verifying, setVerifying] = useState(false);
   const [originalProducts, setOriginalProducts] = useState([]);
   const [paymentReference, setPaymentReference] = useState(null);
-  const [debugInfo, setDebugInfo] = useState(null);
+  
+  // Use refs to prevent duplicate operations
+  const orderCreatedRef = useRef(false);
+  const verificationInProgressRef = useRef(false);
+  const verificationCompletedRef = useRef(false);
 
   const createOrderInBackend = useCallback(async (orderData, userData) => {
+    // Prevent multiple order creation calls
+    if (orderCreatedRef.current) {
+      return;
+    }
+
     try {
+      orderCreatedRef.current = true;
+      
       const token = localStorage.getItem("foodeli-app-token");
       
       const orderDetails = {
@@ -260,10 +244,11 @@ const PaymentPage = () => {
         setUser(userData);
         setOriginalProducts(orderData.products);
       } else {
+        orderCreatedRef.current = false;
         throw new Error("Failed to create order");
       }
     } catch (error) {
-      console.error('Order creation error:', error);
+      orderCreatedRef.current = false;
       dispatch(
         openSnackbar({
           message: `Failed to create order: ${error.response?.data?.message || error.message}`,
@@ -274,41 +259,208 @@ const PaymentPage = () => {
     }
   }, [dispatch, navigate]);
 
-  // Listen for payment completion messages and localStorage changes
-  useEffect(() => {
-    const handleMessage = async (event) => {
-      // Make sure the message is from a trusted source
-      if (event.origin !== window.location.origin) {
-        return;
-      }
+ const handlePaymentVerification = useCallback(async (reference) => {
+  // Prevent duplicate verification calls
+  if (verificationInProgressRef.current || verificationCompletedRef.current) {
+    console.log('Verification already in progress or completed for reference:', reference);
+    return;
+  }
+  
+  try {
+    console.log('Starting payment verification for reference:', reference);
+    verificationInProgressRef.current = true;
+    setVerifying(true);
+    
+    const token = localStorage.getItem('foodeli-app-token');
+    
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
 
+    // Add retry logic for verification
+    let verifyResponse;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        verifyResponse = await verifyPayment(token, reference);
+        break; // Success, exit retry loop
+      } catch (error) {
+        retryCount++;
+        console.log(`Verification attempt ${retryCount} failed:`, error.message);
+        
+        if (retryCount >= maxRetries) {
+          throw error; // Max retries reached, throw the error
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+    
+    console.log('Verification response:', verifyResponse.data);
+    
+    if (verifyResponse.data.success) {
+      verificationCompletedRef.current = true;
+      
+      // Complete the order after successful payment
+      try {
+        if (order?._id) {
+          const completeResponse = await completeOrder(token, { orderId: order._id });
+          console.log('Order completion response:', completeResponse.data);
+        }
+      } catch (completeError) {
+        console.warn('Order completion failed, but payment was successful:', completeError);
+        // Don't fail the entire process if order completion fails
+      }
+      
+      dispatch(
+        openSnackbar({
+          message: "Payment successful! Your order has been placed.",
+          severity: "success",
+        })
+      );
+      
+      // Clean up localStorage
+      localStorage.removeItem('payment_order_info');
+      localStorage.removeItem('payment_success');
+      localStorage.removeItem('payment_failed');
+      
+      // Clear states
+      setLoading(false);
+      setVerifying(false);
+      
+      console.log('Payment verification successful, navigating to orders...');
+      
+      // Navigate with replace to prevent back navigation to payment page
+      setTimeout(() => {
+        navigate('/orders', { replace: true });
+      }, 1000);
+      
+    } else {
+      throw new Error(verifyResponse.data.message || 'Payment verification failed');
+    }
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    
+    let errorMessage = 'Payment verification failed';
+    
+    if (error.response?.status === 404) {
+      errorMessage = 'Payment record not found. Please contact support if you were charged.';
+    } else if (error.response?.status === 400) {
+      errorMessage = error.response.data?.message || 'Payment verification failed';
+    } else if (error.response) {
+      errorMessage = error.response.data?.message || `Server error (${error.response.status})`;
+    } else if (error.request) {
+      errorMessage = 'Network error - please check your connection and try again';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    dispatch(
+      openSnackbar({
+        message: errorMessage,
+        severity: "error",
+      })
+    );
+  } finally {
+    verificationInProgressRef.current = false;
+    setVerifying(false);
+    setLoading(false);
+  }
+}, [dispatch, navigate, order?._id]);
+
+// FIXED: Improved message handling with better filtering and error handling
+useEffect(() => {
+  const handleMessage = async (event) => {
+    // Enhanced filtering for unwanted messages
+    if (
+      !event.data ||
+      typeof event.data !== 'object' ||
+      event.data.source === 'react-devtools-bridge' ||
+      event.data.source === 'react-devtools-content-script' ||
+      event.data.source === 'react-devtools-detector' ||
+      event.data.source === 'react-devtools-inject-backend' ||
+      !event.data.type ||
+      !event.data.type.startsWith('PAYMENT_')
+    ) {
+      return;
+    }
+
+    console.log('Processing payment message:', event.data);
+
+    try {
       if (event.data.type === 'PAYMENT_SUCCESS' && event.data.reference) {
         const reference = event.data.reference;
         setPaymentReference(reference);
-        await handlePaymentVerification(reference);
-      } else if (event.data.type === 'PAYMENT_FAILED' || event.data.type === 'PAYMENT_CLOSED') {
+        
+        // Ensure we have the reference before proceeding
+        if (reference && reference.trim() !== '') {
+          await handlePaymentVerification(reference);
+        } else {
+          throw new Error('Invalid payment reference received');
+        }
+      } else if (event.data.type === 'PAYMENT_FAILED') {
+        setLoading(false);
+        const errorMessage = event.data.error || 'Payment failed';
+        dispatch(
+          openSnackbar({
+            message: errorMessage,
+            severity: "error",
+          })
+        );
+      } else if (event.data.type === 'PAYMENT_CLOSED') {
         setLoading(false);
         dispatch(
           openSnackbar({
-            message: "Payment was not completed. Please try again.",
+            message: "Payment window was closed. Please try again if you want to complete the payment.",
             severity: "warning",
           })
         );
       }
-    };
+    } catch (error) {
+      console.error('Error handling payment message:', error);
+      setLoading(false);
+      dispatch(
+        openSnackbar({
+          message: "Error processing payment result. Please check your orders or contact support.",
+          severity: "error",
+        })
+      );
+    }
+  };
 
-    // Also check localStorage for payment completion (fallback method)
-    const checkPaymentStatus = () => {
+  window.addEventListener('message', handleMessage);
+  
+  return () => {
+    window.removeEventListener('message', handleMessage);
+  };
+}, [handlePaymentVerification, dispatch]);
+
+// FIXED: More robust localStorage monitoring
+useEffect(() => {
+  if (!loading || verificationCompletedRef.current) {
+    return;
+  }
+
+  const checkPaymentStatus = async () => {
+    try {
       const paymentSuccess = localStorage.getItem('payment_success');
       const paymentFailed = localStorage.getItem('payment_failed');
       
       if (paymentSuccess) {
         const paymentData = JSON.parse(paymentSuccess);
-        // Check if it's recent (within last 5 minutes)
-        if (Date.now() - paymentData.timestamp < 300000) {
+        // Check if it's recent (within last 5 minutes) and has valid reference
+        if (
+          Date.now() - paymentData.timestamp < 300000 &&
+          paymentData.reference &&
+          paymentData.reference.trim() !== ''
+        ) {
           localStorage.removeItem('payment_success');
           setPaymentReference(paymentData.reference);
-          handlePaymentVerification(paymentData.reference);
+          
+          await handlePaymentVerification(paymentData.reference);
           return;
         }
       }
@@ -321,24 +473,115 @@ const PaymentPage = () => {
           setLoading(false);
           dispatch(
             openSnackbar({
-              message: "Payment was not completed. Please try again.",
-              severity: "warning",
+              message: paymentData.error || "Payment failed. Please try again.",
+              severity: "error",
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error checking payment status from localStorage:', error);
+    }
+  };
+
+  const intervalId = setInterval(checkPaymentStatus, 2000);
+  
+  return () => clearInterval(intervalId);
+}, [loading, handlePaymentVerification, dispatch]);
+
+  // FIXED: Improved message handling for payment results with proper filtering
+  useEffect(() => {
+    const handleMessage = async (event) => {
+      // Filter out React DevTools messages and other unwanted messages
+      if (
+        event.data?.source === 'react-devtools-bridge' ||
+        event.data?.source === 'react-devtools-content-script' ||
+        event.data?.source === 'react-devtools-detector' ||
+        event.data?.source === 'react-devtools-inject-backend' ||
+        !event.data?.type ||
+        !event.data.type.startsWith('PAYMENT_')
+      ) {
+        return;
+      }
+
+      console.log('Processing payment message:', event.data);
+
+      if (event.data.type === 'PAYMENT_SUCCESS' && event.data.reference) {
+        const reference = event.data.reference;
+        setPaymentReference(reference);
+        
+        // FIXED: Ensure navigation happens after verification
+        await handlePaymentVerification(reference);
+      } else if (event.data.type === 'PAYMENT_FAILED') {
+        setLoading(false);
+        const errorMessage = event.data.error || 'Payment failed';
+        dispatch(
+          openSnackbar({
+            message: errorMessage,
+            severity: "error",
+          })
+        );
+      } else if (event.data.type === 'PAYMENT_CLOSED') {
+        setLoading(false);
+        dispatch(
+          openSnackbar({
+            message: "Payment window was closed. Please try again if you want to complete the payment.",
+            severity: "warning",
+          })
+        );
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [handlePaymentVerification, dispatch]);
+
+  // FIXED: Improved localStorage monitoring for payment status
+  useEffect(() => {
+    if (!loading || verificationCompletedRef.current) {
+      return;
+    }
+
+    const checkPaymentStatus = async () => {
+      const paymentSuccess = localStorage.getItem('payment_success');
+      const paymentFailed = localStorage.getItem('payment_failed');
+      
+      if (paymentSuccess) {
+        const paymentData = JSON.parse(paymentSuccess);
+        // Check if it's recent (within last 5 minutes)
+        if (Date.now() - paymentData.timestamp < 300000) {
+          localStorage.removeItem('payment_success');
+          setPaymentReference(paymentData.reference);
+          
+          // FIXED: Ensure navigation happens after verification
+          await handlePaymentVerification(paymentData.reference);
+          return;
+        }
+      }
+      
+      if (paymentFailed) {
+        const paymentData = JSON.parse(paymentFailed);
+        // Check if it's recent (within last 5 minutes)
+        if (Date.now() - paymentData.timestamp < 300000) {
+          localStorage.removeItem('payment_failed');
+          setLoading(false);
+          dispatch(
+            openSnackbar({
+              message: paymentData.error || "Payment failed. Please try again.",
+              severity: "error",
             })
           );
         }
       }
     };
 
-    window.addEventListener('message', handleMessage);
+    const intervalId = setInterval(checkPaymentStatus, 2000);
     
-    // Check localStorage periodically when loading
-    const intervalId = loading ? setInterval(checkPaymentStatus, 2000) : null;
-    
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [loading]);
+    return () => clearInterval(intervalId);
+  }, [loading, handlePaymentVerification, dispatch]);
 
   useEffect(() => {
     const { orderData, user: userData } = location.state || {};
@@ -383,10 +626,10 @@ const PaymentPage = () => {
     return errors;
   };
 
+  // FIXED: Improved popup monitoring in handlePayment function
   const handlePayment = async () => {
     try {
       setLoading(true);
-      setDebugInfo(null);
 
       const token = localStorage.getItem('foodeli-app-token');
       
@@ -424,21 +667,6 @@ const PaymentPage = () => {
         callback_url: `${window.location.origin}/payment/callback`
       };
 
-      // Set debug info
-      setDebugInfo({
-        paymentData: paymentData,
-        order: {
-          id: order._id,
-          total_amount: order.total_amount,
-          products_count: originalProducts.length
-        },
-        user: {
-          email: user.email
-        }
-      });
-
-      console.log('Initializing payment with data:', paymentData);
-
       // Validate payment data
       const validationErrors = validatePaymentData(paymentData);
       
@@ -448,14 +676,9 @@ const PaymentPage = () => {
 
       const response = await initializePayment(token, paymentData);
       
-      console.log('Payment initialization response:', response.data);
-      
       if (response.data.success) {
         const { authorization_url, reference } = response.data.data;
         setPaymentReference(reference);
-        
-        console.log('Opening payment URL:', authorization_url);
-        console.log('Payment reference:', reference);
         
         // Try popup first
         const popup = window.open(
@@ -466,46 +689,49 @@ const PaymentPage = () => {
 
         if (!popup) {
           // If popup is blocked, redirect in same window
-          console.log('Popup blocked, redirecting in same window');
           window.location.href = authorization_url;
           return;
         }
 
-        // Enhanced popup monitoring
-        const checkClosed = setInterval(async () => {
+        // FIXED: Monitor popup closure with better handling
+        const checkClosed = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkClosed);
-            console.log('Popup closed, checking payment status');
             
-            // Wait a moment then check localStorage for payment result
-            setTimeout(() => {
-              const paymentSuccess = localStorage.getItem('payment_success');
-              const paymentFailed = localStorage.getItem('payment_failed');
-              
-              if (paymentSuccess) {
-                const paymentData = JSON.parse(paymentSuccess);
-                localStorage.removeItem('payment_success');
-                handlePaymentVerification(paymentData.reference);
-              } else if (paymentFailed) {
-                localStorage.removeItem('payment_failed');
-                setLoading(false);
-                dispatch(
-                  openSnackbar({
-                    message: "Payment was not completed. Please try again.",
-                    severity: "warning",
-                  })
-                );
-              } else {
-                // No status found, try to verify with the reference we have
-                setLoading(false);
-                dispatch(
-                  openSnackbar({
-                    message: "Payment status unclear. Please check your orders or contact support.",
-                    severity: "warning",
-                  })
-                );
+            // FIXED: Reduced wait time and improved logic
+            setTimeout(async () => {
+              if (!verificationCompletedRef.current) {
+                const paymentSuccess = localStorage.getItem('payment_success');
+                const paymentFailed = localStorage.getItem('payment_failed');
+                
+                if (paymentSuccess) {
+                  const paymentData = JSON.parse(paymentSuccess);
+                  localStorage.removeItem('payment_success');
+                  
+                  // FIXED: Await the verification to ensure navigation
+                  await handlePaymentVerification(paymentData.reference);
+                } else if (paymentFailed) {
+                  const paymentData = JSON.parse(paymentFailed);
+                  localStorage.removeItem('payment_failed');
+                  setLoading(false);
+                  dispatch(
+                    openSnackbar({
+                      message: paymentData.error || "Payment failed. Please try again.",
+                      severity: "error",
+                    })
+                  );
+                } else {
+                  // No clear status - popup closed without clear indication
+                  setLoading(false);
+                  dispatch(
+                    openSnackbar({
+                      message: "Payment window was closed. If you completed the payment, please check your orders.",
+                      severity: "warning",
+                    })
+                  );
+                }
               }
-            }, 2000);
+            }, 1000); // Reduced from 2000ms to 1000ms
           }
         }, 1000);
 
@@ -515,7 +741,9 @@ const PaymentPage = () => {
           if (!popup.closed) {
             popup.close();
           }
-          setLoading(false);
+          if (!verificationCompletedRef.current) {
+            setLoading(false);
+          }
         }, 600000); // 10 minutes
 
       } else {
@@ -523,31 +751,17 @@ const PaymentPage = () => {
       }
     } catch (error) {
       setLoading(false);
-      console.error('Payment initialization error:', error);
       
       // Extract detailed error information
       let errorMessage = 'Payment initialization failed';
-      let errorDetails = {};
       
       if (error.response) {
-        errorDetails = {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        };
         errorMessage = error.response.data?.message || `Server error (${error.response.status})`;
       } else if (error.request) {
-        errorDetails = { type: 'network', message: 'No response received' };
         errorMessage = 'Network error - please check your connection';
       } else {
-        errorDetails = { type: 'client', message: error.message };
         errorMessage = error.message;
       }
-      
-      setDebugInfo(prev => ({
-        ...prev,
-        error: errorDetails
-      }));
       
       dispatch(
         openSnackbar({
@@ -555,58 +769,6 @@ const PaymentPage = () => {
           severity: "error",
         })
       );
-    }
-  };
-
-  const handlePaymentVerification = async (reference) => {
-    if (verifying) return; // Prevent duplicate calls
-    
-    try {
-      setVerifying(true);
-      
-      const token = localStorage.getItem('foodeli-app-token');
-      
-      console.log('Verifying payment with reference:', reference);
-      
-      // Use the correct API call with reference as parameter
-      const verifyResponse = await verifyPayment(token, reference);
-      
-      console.log('Verification response:', verifyResponse.data);
-      
-      if (verifyResponse.data.success) {
-        // Complete the order after successful payment
-        const completeResponse = await completeOrder(token, { orderId: order._id });
-        
-        console.log('Order completion response:', completeResponse.data);
-        
-        dispatch(
-          openSnackbar({
-            message: "Payment successful! Your order has been placed.",
-            severity: "success",
-          })
-        );
-        
-        // Navigate to orders page
-        navigate('/orders');
-      } else {
-        dispatch(
-          openSnackbar({
-            message: 'Payment verification failed. Please contact support if you were charged.',
-            severity: "error",
-          })
-        );
-      }
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      dispatch(
-        openSnackbar({
-          message: "Payment verification failed. Please contact support if you were charged.",
-          severity: "error",
-        })
-      );
-    } finally {
-      setVerifying(false);
-      setLoading(false);
     }
   };
 
@@ -712,13 +874,6 @@ const PaymentPage = () => {
             <p>Supports Cards, Bank Transfer, USSD & Mobile Money</p>
           </SecurityNote>
         </PaymentSection>
-
-        {debugInfo && (
-          <DebugInfo>
-            <h4>Debug Information:</h4>
-            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-          </DebugInfo>
-        )}
       </Section>
     </Container>
   );

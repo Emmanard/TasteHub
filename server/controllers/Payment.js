@@ -2,12 +2,16 @@
 import https from 'https';
 import crypto from 'crypto';
 import Order from '../models/Orders.js';
-import dotenv from 'dotenv';    
+import dotenv from 'dotenv';  
+import User from '../models/User.js';
 dotenv.config();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
 // Helper function to convert Naira to Kobo
+const convertToKobo = (amount) => {
+  return Math.round(amount * 100);
+};
 export const initializePayment = async (req, res) => {
   try {
     const { email, amount, orderId, callback_url } = req.body;
@@ -135,34 +139,70 @@ export const initializePayment = async (req, res) => {
   }
 };
 
-// Fixed verify payment to prevent duplicate orders
-export const verifyPayment = async (req, res) => {
+ export const verifyPayment = async (req, res, next) => {
   try {
     const { reference } = req.params;
+    const userId = req.user.id;
 
-    // First check if we already processed this payment
-    const existingOrder = await Order.findOne({ 
-      'payment.reference': reference,
-      'payment.status': 'success'
+    console.log(`Verifying payment for reference: ${reference}, user: ${userId}`);
+
+    if (!reference || reference.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Payment reference is required",
+      });
+    }
+
+    // ✅ Declare and use existingOrder properly
+    const existingOrder = await Order.findOne({
+      user: userId,
+      $or: [
+        { 'payment.reference': reference },
+        { 'payment.paystack_reference': reference },
+      ],
     });
 
-    if (existingOrder) {
-      return res.json({
-        success: true,
-        message: 'Payment already verified',
-        data: { status: 'success' },
-        order: existingOrder
+    if (!existingOrder) {
+      console.log('Order not found for reference:', reference);
+      return res.status(404).json({
+        success: false,
+        message: "Order not found for this payment reference",
       });
+    }
+
+    console.log('Order found:', existingOrder._id);
+
+    if (existingOrder.payment.status === 'success') {
+      console.log('Payment already verified for reference:', reference);
+      return res.status(200).json({
+        success: true,
+        message: "Payment already verified",
+        data: {
+          reference: existingOrder.payment.paystack_reference || reference,
+          amount: existingOrder.total_amount,
+          status: 'success',
+          paid_at: existingOrder.payment.paid_at,
+          order: existingOrder,
+          cartCleared: true,
+        },
+      });
+    }
+
+    let paystackReference = reference;
+
+    if (reference.startsWith('order_') && existingOrder.payment.paystack_reference) {
+      paystackReference = existingOrder.payment.paystack_reference;
     }
 
     const options = {
       hostname: 'api.paystack.co',
       port: 443,
-      path: `/transaction/verify/${reference}`,
+      path: `/transaction/verify/${paystackReference}`,
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-      }
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
     };
 
     const paystackReq = https.request(options, (paystackRes) => {
@@ -175,112 +215,133 @@ export const verifyPayment = async (req, res) => {
       paystackRes.on('end', async () => {
         try {
           const response = JSON.parse(data);
-          
-          if (response.status && response.data.status === 'success') {
-            const amountInNaira = response.data.amount / 100;
-            
-            // Use atomic update to prevent race conditions
-            const order = await Order.findOneAndUpdate(
-              { 
-                'payment.reference': reference,
-                'payment.status': { $ne: 'success' } // Only update if not already successful
-              },
-              {
-                'payment.status': 'success',
-                'payment.paystack_reference': response.data.reference,
-                'payment.payment_method': response.data.authorization.channel,
-                'payment.paid_at': new Date(),
-                'payment.gateway_response': response.data.gateway_response,
-                'payment.amount': amountInNaira,
-                'payment.amount_kobo': response.data.amount,
-                'status': 'Payment Done'
-              },
-              { new: true }
-            );
+          console.log('Paystack verification response:', response);
 
-            if (!order) {
-              // Order not found or already processed
-              const existingSuccessfulOrder = await Order.findOne({ 
-                'payment.reference': reference,
-                'payment.status': 'success'
+          if (response.status && response.data.status === 'success') {
+            const paymentData = response.data;
+            const paidAmount = paymentData.amount / 100;
+            const orderAmount = existingOrder.total_amount;
+
+            if (Math.abs(paidAmount - orderAmount) > 0.01) {
+              console.log(`Amount mismatch: paid ${paidAmount}, expected ${orderAmount}`);
+              return res.status(400).json({
+                success: false,
+                message: "Payment amount does not match order amount",
               });
-              
-              if (existingSuccessfulOrder) {
-                return res.json({
-                  success: true,
-                  message: 'Payment already verified',
-                  data: response.data,
-                  order: existingSuccessfulOrder
-                });
-              } else {
-                return res.status(404).json({
-                  success: false,
-                  message: 'Order not found for this payment reference'
-                });
-              }
             }
 
-            // Clean up any duplicate pending orders for the same user
-            await Order.deleteMany({
-              user: order.user,
-              status: 'Pending Payment',
-              _id: { $ne: order._id },
-              createdAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) } // Within last 30 minutes
-            });
-
-            res.json({
-              success: true,
-              message: 'Payment verified successfully',
-              data: {
-                ...response.data,
-                amount_naira: amountInNaira,
+            const updatedOrder = await Order.findOneAndUpdate(
+              {
+                user: userId,
+                'payment.reference': reference,
+                'payment.status': { $in: ['pending', 'processing'] },
               },
-              order
+              {
+                $set: {
+                  'payment.status': 'success',
+                  'payment.paystack_reference': paymentData.reference,
+                  'payment.payment_method': paymentData.channel,
+                  'payment.paid_at': new Date(paymentData.paid_at),
+                  'payment.gateway_response': paymentData.gateway_response,
+                  status: 'Payment Done',
+                  updatedAt: new Date(),
+                },
+              },
+              { new: true, runValidators: true }
+            );
+
+            if (!updatedOrder) {
+              console.log('Order not found or already processed during update');
+              return res.status(404).json({
+                success: false,
+                message: "Order not found or already processed",
+              });
+            }
+
+            const user = await User.findById(userId);
+            let cartCleared = false;
+
+            if (user && user.cart.length > 0) {
+              user.cart = [];
+              await user.save();
+              cartCleared = true;
+              console.log('Cart cleared for user:', userId);
+            }
+
+            console.log('Payment verification successful for order:', updatedOrder._id);
+            return res.status(200).json({
+              success: true,
+              message: "Payment verified successfully",
+              data: {
+                reference: paymentData.reference,
+                amount: paidAmount,
+                status: paymentData.status,
+                paid_at: paymentData.paid_at,
+                order: updatedOrder,
+                cartCleared,
+              },
             });
           } else {
-            // Update order as failed
+            console.log('Payment verification failed:', response);
+
             await Order.findOneAndUpdate(
-              { 'payment.reference': reference },
+              { user: userId, 'payment.reference': reference },
               {
-                'payment.status': 'failed',
-                'status': 'Cancelled'
+                $set: {
+                  'payment.status': 'failed',
+                  'payment.gateway_response': response.data?.gateway_response || 'Verification failed',
+                  status: 'Cancelled',
+                  updatedAt: new Date(),
+                },
               }
             );
 
-            res.status(400).json({
+            return res.status(400).json({
               success: false,
-              message: 'Payment verification failed'
+              message: response.data?.gateway_response || "Payment verification failed",
+              data: {
+                reference,
+                status: response.data?.status || 'failed',
+                gateway_response: response.data?.gateway_response,
+              },
             });
           }
         } catch (error) {
-          console.error('Error processing verification response:', error);
+          console.error('Error processing Paystack verification response:', error);
           res.status(500).json({
             success: false,
-            message: 'Payment verification failed'
+            message: 'Payment verification failed - invalid response format',
           });
         }
       });
     });
 
     paystackReq.on('error', (error) => {
-      console.error('Paystack verification error:', error);
+      console.error('Paystack verification request error:', error);
       res.status(500).json({
         success: false,
-        message: 'Payment verification failed'
+        message: 'Payment verification failed - network error',
+      });
+    });
+
+    paystackReq.setTimeout(30000, () => {
+      console.error('Paystack verification request timeout');
+      paystackReq.destroy();
+      res.status(500).json({
+        success: false,
+        message: 'Payment verification failed - request timeout',
       });
     });
 
     paystackReq.end();
-
-  } catch (error) {
-    console.error('Verify payment error:', error);
-    res.status(500).json({
+  } catch (err) {
+    console.error('Payment verification error:', err);
+    return res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error during payment verification',
     });
   }
 };
-
 
 // Webhook handler for Paystack events
 export const handleWebhook = async (req, res) => {

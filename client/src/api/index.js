@@ -97,11 +97,22 @@ export const initializePayment = async (token, data) =>
   await API.post(`/user/payment/initialize`, data, {
     headers: { Authorization: `Bearer ${token}` },
   });
+export const verifyPayment = async (token, reference) => {
+  console.log('Making API call to verify payment:', reference);
+  console.log('Full URL:', `/user/payment/verify/${reference}`);
+  
+  try {
+    const response = await API.get(`/user/payment/verify/${reference}`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    return response;
+  } catch (error) {
+    console.error('API call failed:', error.response?.status, error.response?.data);
+    throw error;
+  }
+};
 
-export const verifyPayment = async (token, reference) =>
-  await API.get(`/user/payment/verify/${reference}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  
 
 // Note: Webhook endpoint doesn't need a frontend call as it's called by the payment provider
 // export const handleWebhook = async (data) =>
