@@ -2,42 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { openSnackbar } from '../redux/reducers/SnackbarSlice';
-import { verifyPayment, completeOrder } from '../api';
-import styled from 'styled-components';
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  padding: 20px;
-  background: ${({ theme }) => theme.bg};
-`;
-
-const Message = styled.div`
-  text-align: center;
-  font-size: 18px;
-  color: ${({ theme }) => theme.text_primary};
-  margin-bottom: 20px;
-  max-width: 400px;
-  line-height: 1.5;
-`;
-
-const Spinner = styled.div`
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
+import { 
+  usePaymentVerification,
+  validateCallbackParams,
+  storePaymentSuccess,
+  storePaymentFailure,
+  clearPaymentStorage
+} from '../hooks/usePayment';
+import { CallbackContainer, Message, CallbackSpinner } from './PaymentStyles';
 
 const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
@@ -46,6 +18,8 @@ const PaymentCallback = () => {
   const [processing, setProcessing] = useState(true);
   const [message, setMessage] = useState('Processing payment...');
   const hasProcessed = useRef(false);
+  
+  const { handlePaymentVerification } = usePaymentVerification();
 
   useEffect(() => {
     if (hasProcessed.current) return;
@@ -54,139 +28,141 @@ const PaymentCallback = () => {
       try {
         hasProcessed.current = true;
         
-        const reference = searchParams.get('reference');
-        const status = searchParams.get('status');
-        const trxref = searchParams.get('trxref');
+        // Validate callback parameters
+        const { reference, status, errors } = validateCallbackParams(searchParams);
         
-        const paymentRef = reference || trxref;
+        console.log('Callback params:', { reference, status, errors });
         
-        if (!paymentRef) {
-          throw new Error('No payment reference found in URL parameters');
+        if (errors && errors.length > 0) {
+          throw new Error(errors[0]);
         }
 
-        // Check Paystack status parameter first
-        if (status && status === 'cancelled') {
-          throw new Error('Payment was cancelled by user');
+        if (!reference || typeof reference !== 'string' || reference.trim() === '') {
+          throw new Error('Invalid payment reference');
         }
-        
-        if (status && status === 'failed') {
+
+        const trimmedReference = reference.trim();
+
+        // Handle cancelled payments
+        if (status === 'cancelled') {
+          throw new Error('Payment was cancelled');
+        }
+
+        // Handle failed payments
+        if (status === 'failed') {
           throw new Error('Payment failed');
-        }
-
-        const token = localStorage.getItem('foodeli-app-token');
-        if (!token) {
-          throw new Error('Authentication token not found');
         }
 
         setMessage('Verifying payment with Paystack...');
         
-        // Verify payment with backend
-        const verifyResponse = await verifyPayment(token, paymentRef);
+        // Use the custom hook for verification
+        await handlePaymentVerification(trimmedReference, null);
         
-        if (!verifyResponse.data.success) {
-          throw new Error(verifyResponse.data.message || 'Payment verification failed');
-        }
-
         setMessage('Payment verified! Processing your order...');
         
-        // Get order info for completion
+        // Get stored order info
         const orderInfo = localStorage.getItem('payment_order_info');
         let orderCompleted = false;
         
         if (orderInfo) {
           try {
             const orderData = JSON.parse(orderInfo);
-            const completeResponse = await completeOrder(token, { 
-              orderId: orderData.orderId 
-            });
-            
-            if (completeResponse.data.success) {
-              orderCompleted = true;
-            }
+            console.log('Order info from storage:', orderData);
+            // Order completion is handled within handlePaymentVerification
+            orderCompleted = true;
           } catch (orderError) {
-            console.warn('Order completion failed:', orderError);
+            console.warn('Order info parsing failed:', orderError);
           }
         }
-
-        // Clean up localStorage
-        localStorage.removeItem('payment_order_info');
-        localStorage.removeItem('payment_success');
-        localStorage.removeItem('payment_failed');
 
         setMessage('Payment successful! Your order has been placed.');
         
         if (window.opener) {
           // Popup scenario
-          localStorage.setItem('payment_success', JSON.stringify({
-            reference: paymentRef,
-            status: 'success',
-            orderCompleted: true,
-            timestamp: Date.now()
-          }));
+          storePaymentSuccess(trimmedReference, orderCompleted);
           
-          window.opener.postMessage({
-            type: 'PAYMENT_SUCCESS',
-            reference: paymentRef,
-            status: 'success',
-            orderCompleted: true
-          }, window.location.origin);
+          // Send success message to parent window
+          try {
+            window.opener.postMessage({
+              type: 'PAYMENT_SUCCESS',
+              reference: trimmedReference,
+              status: 'success',
+              orderCompleted: true
+            }, window.location.origin);
+          } catch (postMessageError) {
+            console.error('Failed to send message to parent window:', postMessageError);
+          }
           
           setMessage('Payment successful! Closing window...');
           setTimeout(() => {
             try {
               window.close();
             } catch (e) {
-              console.warn('Could not close window');
+              console.warn('Could not close window:', e);
+              // Fallback - redirect to orders page
+              window.location.href = '/orders';
             }
           }, 2000);
         } else {
-          // Same window scenario - redirect to orders
+          // Same window scenario - navigation is handled by the hook
           dispatch(
             openSnackbar({
               message: "Payment successful! Your order has been placed.",
               severity: "success",
             })
           );
-          
-          // Navigate to orders page
-          setTimeout(() => {
-            navigate('/orders', { replace: true });
-          }, 1500);
         }
         
       } catch (error) {
         console.error('Payment callback error:', error);
-        const errorMessage = error.response?.data?.message || error.message || 'Payment processing failed';
+        
+        // Extract reference for error handling
+        const reference = searchParams.get('reference') || searchParams.get('trxref') || '';
+        const trimmedReference = reference.trim();
+        
+        // Determine error message
+        let errorMessage = 'Payment processing failed';
+        
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+        
+        console.error('Final error message:', errorMessage);
         setMessage(`Payment failed: ${errorMessage}`);
         
         if (window.opener) {
           // Store failure information
-          localStorage.setItem('payment_failed', JSON.stringify({
-            reference: searchParams.get('reference') || searchParams.get('trxref'),
-            status: 'failed',
-            error: errorMessage,
-            timestamp: Date.now()
-          }));
+          storePaymentFailure(trimmedReference, errorMessage);
           
           // Notify parent window
-          window.opener.postMessage({
-            type: 'PAYMENT_FAILED',
-            error: errorMessage,
-            reference: searchParams.get('reference') || searchParams.get('trxref')
-          }, window.location.origin);
+          try {
+            window.opener.postMessage({
+              type: 'PAYMENT_FAILED',
+              error: errorMessage,
+              reference: trimmedReference
+            }, window.location.origin);
+          } catch (postMessageError) {
+            console.error('Failed to send error message to parent window:', postMessageError);
+          }
           
           setTimeout(() => {
             try {
               window.close();
             } catch (e) {
-              console.warn('Could not close window');
+              console.warn('Could not close window:', e);
+              // Fallback - redirect to cart
+              window.location.href = '/cart';
             }
           }, 3000);
         } else {
           // Same window scenario
           dispatch(
             openSnackbar({
-              message: `Payment failed: ${errorMessage}`,
+              message: errorMessage,
               severity: "error",
             })
           );
@@ -200,18 +176,25 @@ const PaymentCallback = () => {
       }
     };
 
+    // Add a small delay to ensure URL parameters are properly parsed
     const timeoutId = setTimeout(handleCallback, 500);
     return () => clearTimeout(timeoutId);
-  }, [searchParams, navigate, dispatch]);
+  }, [searchParams, navigate, dispatch, handlePaymentVerification]);
 
   // Handle manual window closure
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (window.opener && processing) {
-        window.opener.postMessage({
-          type: 'PAYMENT_CLOSED',
-          reference: searchParams.get('reference') || searchParams.get('trxref')
-        }, window.location.origin);
+        const reference = searchParams.get('reference') || searchParams.get('trxref') || '';
+        
+        try {
+          window.opener.postMessage({
+            type: 'PAYMENT_CLOSED',
+            reference: reference.trim()
+          }, window.location.origin);
+        } catch (error) {
+          console.error('Failed to send close message:', error);
+        }
       }
     };
 
@@ -220,15 +203,15 @@ const PaymentCallback = () => {
   }, [processing, searchParams]);
 
   return (
-    <Container>
-      {processing && <Spinner />}
+    <CallbackContainer>
+      {processing && <CallbackSpinner />}
       <Message>{message}</Message>
       {!processing && !window.opener && (
         <Message>
           Redirecting you back to the app...
         </Message>
       )}
-    </Container>
+    </CallbackContainer>
   );
 };
 
