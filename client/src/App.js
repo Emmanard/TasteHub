@@ -14,6 +14,7 @@ import SignIn from "./components/SignIn";
 import Orders from "./pages/Orders";
 import PaymentCallback from "./pages/PaymentCallback";
 import SearchPage from "./pages/SearchPage";
+import Contact from "./pages/Contact";
 import { useSelector } from "react-redux";
 
 const Container = styled.div``;
@@ -36,6 +37,8 @@ function App() {
             <Route path="/favorite" exact element={<Favourites />} />
             <Route path="/search" exact element={<SearchPage />} />
             <Route path="/cart" exact element={<Cart />} />
+            <Route path="/contact" exact element={<Contact />} />
+
             <Route path="/dishes/:id" exact element={<FoodDetails />} />
             <Route path="/dishes" exact element={<FoodListing />} />
             <Route path="/login" exact element={<SignIn/>} />

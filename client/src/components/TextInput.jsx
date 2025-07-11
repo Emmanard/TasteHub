@@ -80,7 +80,7 @@ const Input = styled.input`
   outline: none;
   border: none;
   background-color: transparent;
-  color: ${({ theme }) => theme.primary};
+  color: ${({ theme }) => theme.text_primary}; // Changed from theme.primary
   &:focus {
     outline: none;
   }
@@ -94,9 +94,8 @@ const Input = styled.input`
     popup &&
     `
   color: ${theme.popup_text_secondary};
-  `} ${({ theme }) => theme.popup_text_secondary};
+  `}
 `;
-
 const Error = styled.p`
   font-size: 12px;
   margin: 0px 4px;
