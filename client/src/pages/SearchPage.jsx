@@ -89,10 +89,8 @@ const FilterChip = styled.div`
   padding: 8px 16px;
   border-radius: 20px;
   border: 1px solid ${({ theme }) => theme.text_secondary + "40"};
-  background: ${({ $active, theme }) => 
-    $active ? theme.primary : theme.card};
-  color: ${({ $active, theme }) => 
-    $active ? "white" : theme.text_primary};
+  background: ${({ $active, theme }) => ($active ? theme.primary : theme.card)};
+  color: ${({ $active, theme }) => ($active ? "white" : theme.text_primary)};
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s ease;
@@ -150,16 +148,17 @@ const Search = () => {
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
 
-  const filters = [
-    { key: "all", label: "All" },
-    { key: "pizza", label: "Pizza" },
-    { key: "burger", label: "Burgers" },
-    { key: "pasta", label: "Pasta" },
-    { key: "chinese", label: "Chinese" },
-    { key: "indian", label: "Indian" },
-    { key: "vegetarian", label: "Vegetarian" },
-    { key: "dessert", label: "Desserts" }
-  ];
+  // const filters = [
+  //   { key: "all", label: "All" },
+  //   { key: "rice", label: "Rice" },
+  //   { key: "soup", label: "Soup" },
+  //   { key: "pasta-noodle", label: "Pasta & Noodle" },
+  //   {
+  //     key: "pepper-soups-spicy-specials",
+  //     label: "Pepper Soups & Spicy Specials",
+  //   },
+  //   { key: "sides-small-chops", label: "Sides & Small Chops" },
+  // ];
 
   // Memoized search function to avoid infinite re-renders
   const performSearch = useCallback(async () => {
@@ -218,21 +217,21 @@ const Search = () => {
     <Container>
       <Section>
         <Title>Search Delicious Food</Title>
-        
+
         <SearchContainer>
           <SearchInput
             type="text"
             placeholder="Search for dishes, cuisines, or ingredients..."
             value={searchQuery}
             onChange={handleSearchInputChange}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearchIconClick()}
+            onKeyDown={(e) => e.key === "Enter" && handleSearchIconClick()}
           />
           <SearchIcon onClick={handleSearchIconClick}>
             <SearchRounded />
           </SearchIcon>
         </SearchContainer>
 
-        <FilterContainer>
+        {/* <FilterContainer>
           {filters.map((filter) => (
             <FilterChip
               key={filter.key}
@@ -242,20 +241,28 @@ const Search = () => {
               {filter.label}
             </FilterChip>
           ))}
-        </FilterContainer>
+        </FilterContainer> */}
 
         <ResultsContainer>
           {searchQuery && (
             <ResultsHeader>
               <ResultsCount>
-                {loading ? "Searching..." : `${searchResults.length} results found`}
+                {loading
+                  ? "Searching..."
+                  : `${searchResults.length} results found`}
                 {searchQuery && ` for "${searchQuery}"`}
               </ResultsCount>
             </ResultsHeader>
           )}
 
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "40px",
+              }}
+            >
               <CircularProgress />
             </div>
           ) : searchResults.length > 0 ? (
@@ -266,9 +273,9 @@ const Search = () => {
             </ProductsGrid>
           ) : searchQuery && !loading ? (
             <NoResults>
-              <SearchRounded style={{ fontSize: '64px', opacity: 0.3 }} />
+              <SearchRounded style={{ fontSize: "64px", opacity: 0.3 }} />
               <div>No results found for "{searchQuery}"</div>
-              <div style={{ fontSize: '14px' }}>
+              <div style={{ fontSize: "14px" }}>
                 Try different keywords or browse our categories
               </div>
             </NoResults>

@@ -55,7 +55,7 @@ export const filter = [
     value: "category",
     items: [
       "Rice",
-      "Soups & Swallows",
+      "Soup",
       "Pasta & Noodle",
       "Pepper Soups & Spicy Specials",
       "Sides & Small Chops",

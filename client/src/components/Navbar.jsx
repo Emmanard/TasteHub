@@ -120,7 +120,7 @@ const MobileMenu = styled.ul`
   list-style: none;
   width: 80%;
   padding: 12px 40px 24px 40px;
-  background: ${({ theme }) => theme.card_light + 99};
+  background: white;
   position: absolute;
   top: 80px;
   right: 0;

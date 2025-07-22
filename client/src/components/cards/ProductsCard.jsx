@@ -25,7 +25,7 @@ const Card = styled.div`
   transition: all 0.3s ease-out;
   cursor: pointer;
   @media (max-width: 600px) {
-    width: 180px;
+    width: 250px;
   }
 `;
 const Image = styled.img`
@@ -331,7 +331,7 @@ const ProductsCard = ({ product }) => {
   }, [checkFavorite]);
 
   return (
-    <Card>
+    <Card onClick={() => navigate(`/dishes/${product._id}`)}>
       <Top>
         <Image src={product?.img} alt={product?.name} />
         <Menu>
@@ -370,7 +370,7 @@ const ProductsCard = ({ product }) => {
           <Rating value={3.5} sx={{ fontSize: "14px" }} readOnly />
         </Rate>
       </Top>
-      <Details onClick={() => navigate(`/dishes/${product._id}`)}>
+      <Details>
         <Title>{product?.name}</Title>
         <Desc>{product?.desc}</Desc>
         <Price>
