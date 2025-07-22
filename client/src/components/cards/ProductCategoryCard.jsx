@@ -10,7 +10,7 @@ const Card = styled.div`
   cursor: pointer;
 
   @media (max-width: 600px) {
-    width: 170px;
+    width: 250px;
   }
 `;
 

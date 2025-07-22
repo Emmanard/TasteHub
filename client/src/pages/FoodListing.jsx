@@ -46,6 +46,8 @@ const CardWrapper = styled.div`
   justify-content: center;
   @media (max-width: 760px) {
     gap: 16px;
+    display: flex;
+    justify-content: center;
   }
 `;
 
