@@ -170,7 +170,7 @@ const Contact = () => {
             </ContactHeader>
             <ContactInfo>
               <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                support@yourwebsite
+                abarikwuchukwuemeka@gmail.com
               </div>
               <div>
                 We typically respond within 24 hours
