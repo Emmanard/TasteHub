@@ -161,7 +161,7 @@ const Contact = () => {
             </ContactAction>
           </ContactCard>
 
-          <ContactCard onClick={() => handleContactClick('email', 'support@yourwebsite')}>
+          <ContactCard onClick={() => handleContactClick('email', 'abarikwuchukwuemeka@gmail.com')}>
             <ContactHeader>
               <IconWrapper bgColor="#3b82f6">
                 <Email />
@@ -181,7 +181,7 @@ const Contact = () => {
             </ContactAction>
           </ContactCard>
 
-          <ContactCard onClick={() => handleContactClick('whatsapp', 'https://wa.me/2348123456789')}>
+          <ContactCard onClick={() => handleContactClick('whatsapp', 'https://wa.me/2347046629255')}>
             <ContactHeader>
               <IconWrapper bgColor="#25d366">
                 <Chat />
