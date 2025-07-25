@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
@@ -7,6 +6,13 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     img: { type: String, default: null },
+
+    // Add role field with default as "user"
+    role: { 
+      type: String, 
+      enum: ["user", "admin"], 
+      default: "user" 
+    },
 
     favourites: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Food" }

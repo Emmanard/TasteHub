@@ -34,6 +34,11 @@ const OrderSchema = new mongoose.Schema(
       enum: ["Pending Payment", "Payment Done", "Processing", "Delivered", "Cancelled"],
       default: "Pending Payment",
     },
+    deliveryStatus: {
+      type: String,
+      enum: ["Processing", "Delivered", "Cancelled"],
+      default: "Processing",
+    },
     // Paystack payment fields
     payment: {
       reference: {

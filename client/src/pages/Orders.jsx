@@ -80,19 +80,20 @@ const OrderDate = styled.div`
   color: ${({ theme }) => theme.text_secondary};
 `;
 
+// Reusable status component for both status and deliveryStatus
 const OrderStatus = styled.div`
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
   background: ${({ status, theme }) =>
-    status === "Delivered"
+    status === "Delivered" || status === "Completed"
       ? theme.primary + "20"
       : status === "Cancelled"
       ? "#ff000020"
       : "#ffa50020"};
   color: ${({ status, theme }) =>
-    status === "Delivered"
+    status === "Delivered" || status === "Completed"
       ? theme.primary
       : status === "Cancelled"
       ? "#ff0000"
@@ -230,11 +231,9 @@ const Orders = () => {
         }
 
         const response = await getOrders(token);
-        
-        // Debug: Log the response to see its structure
+
         console.log("API Response:", response);
-        
-        // Handle different possible response structures
+
         let ordersData = [];
         if (response?.data) {
           if (Array.isArray(response.data)) {
@@ -247,7 +246,7 @@ const Orders = () => {
         } else if (Array.isArray(response)) {
           ordersData = response;
         }
-        
+
         setOrders(ordersData);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -283,12 +282,22 @@ const Orders = () => {
               <OrderCard key={order._id || order.id}>
                 <OrderHeader>
                   <OrderId>
-                    Order ID: #{(order._id || order.id)?.substring((order._id || order.id).length - 8)}
+                    Order ID: #
+                    {(order._id || order.id)?.substring(
+                      (order._id || order.id).length - 8
+                    )}
                   </OrderId>
-                  <OrderDate>{formatDate(order.createdAt || order.created_at)}</OrderDate>
+                  <OrderDate>
+                    {formatDate(order.createdAt || order.created_at)}
+                  </OrderDate>
                   <OrderStatus status={order.status}>
                     {order.status}
                   </OrderStatus>
+                  {order.deliveryStatus && (
+                    <OrderStatus status={order.deliveryStatus}>
+                      {order.deliveryStatus}
+                    </OrderStatus>
+                  )}
                 </OrderHeader>
 
                 <OrderDetails>
@@ -298,30 +307,50 @@ const Orders = () => {
 
                   <ProductList>
                     {(order.products || order.items || []).map((item, index) => (
-                      <ProductItem key={item.product?._id || item.product?.id || `item-${index}`}>
+                      <ProductItem
+                        key={
+                          item.product?._id ||
+                          item.product?.id ||
+                          `item-${index}`
+                        }
+                      >
                         <ProductImg
                           src={item.product?.img || item.product?.image}
-                          alt={item.product?.name || 'Product'}
+                          alt={item.product?.name || "Product"}
                           onError={(e) => {
-                            e.target.src = '/placeholder-image.png'; // Fallback image
+                            e.target.src = "/placeholder-image.png";
                           }}
                         />
                         <ProductInfo>
-                          <ProductName>{item.product?.name || 'Unknown Product'}</ProductName>
-                          <ProductDesc>{item.product?.desc || item.product?.description || ''}</ProductDesc>
+                          <ProductName>
+                            {item.product?.name || "Unknown Product"}
+                          </ProductName>
+                          <ProductDesc>
+                            {item.product?.desc ||
+                              item.product?.description ||
+                              ""}
+                          </ProductDesc>
                           <ProductQuantity>
                             Quantity: {item.quantity || 1}
                           </ProductQuantity>
                         </ProductInfo>
                         <ProductPrice>
-                          ₦{((item.product?.price?.org || item.product?.price || 0) * (item.quantity || 1)).toFixed(2)}
+                          ₦
+                          {(
+                            (item.product?.price?.org ||
+                              item.product?.price ||
+                              0) * (item.quantity || 1)
+                          ).toFixed(2)}
                         </ProductPrice>
                       </ProductItem>
                     ))}
                   </ProductList>
 
                   <TotalAmount>
-                    Total: ₦{Number(order.total_amount || order.totalAmount || order.total || 0).toFixed(2)}
+                    Total: ₦
+                    {Number(
+                      order.total_amount || order.totalAmount || order.total || 0
+                    ).toFixed(2)}
                   </TotalAmount>
                 </OrderDetails>
               </OrderCard>

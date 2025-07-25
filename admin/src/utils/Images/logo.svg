@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TasteHub Logo</title>
+</head>
+<body>
+  <svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+    <text x="10" y="40" font-family="Verdana, Geneva, sans-serif" font-size="32" fill="#F25B3E" font-weight="bold">
+      TasteHub
+    </text>
+  </svg>
+</body>
+</html>

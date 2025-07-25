@@ -1,4 +1,4 @@
-import { verifyToken } from "../middleware/verifyUser.js";
+import { verifyToken, isAdmin }from "../middleware/verifyUser.js";
 import {
   UserLogin,
   UserRegister,
@@ -10,7 +10,9 @@ import {
   placeOrder,
   completeOrder,
   removeFromCart,
-  removeFromFavorites
+  removeFromFavorites,
+  getAllOrdersForAdmin,
+  updateDeliveryStatus
 } from "../controllers/User.js";
 import {
   initializePayment,
@@ -21,9 +23,29 @@ import express from "express";
 
 const router = express.Router();
 
-// Auth routes
-router.post("/signup", UserRegister);
-router.post("/signin", UserLogin);
+// User Auth
+router.post("/signup", (req, res, next) => {
+  req.body.role = "user";
+  return UserRegister(req, res, next);
+});
+router.post("/signin", (req, res, next) => {
+  req.body.loginAs = "user";
+  return UserLogin(req, res, next);
+});
+
+// Admin Auth
+router.post("/admin/signup", (req, res, next) => {
+  req.body.role = "admin";
+  return UserRegister(req, res, next);
+});
+router.post("/admin/signin", (req, res, next) => {
+  req.body.loginAs = "admin";
+  return UserLogin(req, res, next);
+});
+
+// Protected admin signup (only admin can create another admin)
+router.post("/admin/signup", verifyToken, isAdmin, UserRegister);
+router.patch("/admin/orders/:orderId/delivery-status", verifyToken, isAdmin, updateDeliveryStatus);
 
 // Cart routes
 router.post("/cart", verifyToken, addToCart);
@@ -39,6 +61,9 @@ router.patch("/favorite", verifyToken, removeFromFavorites);
 router.post("/order", verifyToken, placeOrder);
 router.get("/order", verifyToken, getAllOrders);
 router.post("/order/complete", verifyToken, completeOrder);
+
+// Admin routes
+router.get("/admin/orders", verifyToken, isAdmin, getAllOrdersForAdmin);
 
 // Payment routes
 router.post("/payment/initialize", verifyToken, initializePayment);

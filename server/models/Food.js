@@ -14,6 +14,11 @@ const FoodSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Add this field for Cloudinary cleanup
+    cloudinaryPublicId: {
+      type: String,
+      default: null,
+    },
     price: {
       type: {
         org: { type: Number, default: 0.0 },
@@ -29,6 +34,7 @@ const FoodSchema = new mongoose.Schema(
     ingredients: {
       type: [String],
       required: true,
+      default: [], // Make it not required OR provide default empty array
     },
   },
   { timestamps: true }

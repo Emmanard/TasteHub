@@ -26,3 +26,14 @@ export const verifyToken = (req, res, next) => {
     return next(createError(500, "Error verifying token"));
   }
 };
+
+export const requireRole = (...allowedRoles) => (req, res, next) => {
+  if (!req.user) return next(createError(401, "Not authenticated"));
+  if (!allowedRoles.includes(req.user.role)) {
+    return next(createError(403, `Access denied. Requires role: ${allowedRoles.join(", ")}`));
+  }
+  next();
+};
+
+/** Convenience middleware for admin-only routes */
+export const isAdmin = requireRole("admin")

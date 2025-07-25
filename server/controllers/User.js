@@ -10,62 +10,60 @@ dotenv.config();
 // Auth
 export const UserRegister = async (req, res, next) => {
   console.log("💡 Entered UserRegister controller");
-  const { name, email, password, img } = req.body;
+  
+  // Force role based on URL (safety check)
+  if (req.originalUrl.includes("/admin/signup")) {
+    req.body.role = "admin";
+  } else {
+    req.body.role = "user";
+  }
+
+  const { name, email, password, img, role } = req.body;
 
   try {
-    // Validate required fields
     if (!name || !email || !password) {
-      console.log("❌ Missing required fields");
       return res.status(400).json({ message: "Name, email, and password are required." });
     }
 
-    // Validate email format
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!isEmailValid) {
-      console.log("❌ Invalid email format:", email);
-      return res.status(400).json({ message: "Invalid email format." });
-    }
+    if (!isEmailValid) return res.status(400).json({ message: "Invalid email format." });
 
-    // Password strength check
     if (password.length < 8) {
-      console.log("❌ Weak password");
       return res.status(400).json({ message: "Password must be at least 8 characters long." });
     }
 
-    // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log("❌ Email already exists:", email);
       return res.status(409).json({ message: "Email is already in use." });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create and save new user
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       img,
+      role: role === "admin" ? "admin" : "user",  // role is now safely controlled
     });
 
     const createdUser = await newUser.save();
-    console.log("✅ User created:", createdUser.email);
+    console.log("✅ User created:", createdUser.email, "Role:", createdUser.role);
 
-    // Generate JWT
-    const token = jwt.sign({ id: createdUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d", // Best practice: shorter expiry
-    });
+    const token = jwt.sign(
+      { id: createdUser._id, role: createdUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    // Respond with token and user details
     return res.status(201).json({
       token,
       user: {
         _id: createdUser._id,
         name: createdUser.name,
         email: createdUser.email,
+        role: createdUser.role,
         img: createdUser.img,
         favourites: createdUser.favourites || [],
         cart: createdUser.cart || [],
@@ -73,33 +71,37 @@ export const UserRegister = async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error("🔥 Error in UserRegister:", error.message);
     return next(error);
   }
 };
 
 export const UserLogin = async (req, res, next) => {
+  // Force loginAs based on the route hit
+  const forcedLoginAs = req.originalUrl.includes("/admin/signin") ? "admin" : "user";
+
   const { email, password } = req.body;
 
   try {
-    // 1. Check if user exists
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // 2. Compare password securely
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      return res.status(400).json({ message: "Invalid credentials" });
+    if (!isPasswordCorrect) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Enforce role check based on forcedLoginAs
+    if (forcedLoginAs === "admin" && user.role !== "admin") {
+      return res.status(403).json({ message: "Not an admin, please login as a user." });
+    }
+    if (forcedLoginAs === "user" && user.role !== "user") {
+      return res.status(403).json({ message: "This is an admin account, use admin login." });
     }
 
-    // 3. Generate JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d", // More realistic than "9999 years"
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    // 4. Respond with user (without password) and token
     const { password: _, ...filteredUser } = user._doc;
 
     return res.status(200).json({
@@ -268,30 +270,56 @@ export const placeOrder = async (req, res, next) => {
   }
 };
 
+export const updateDeliveryStatus = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryStatus } = req.body;
+
+    if (!deliveryStatus || !["Processing", "Delivered", "Cancelled"].includes(deliveryStatus)) {
+      return res.status(400).json({ success: false, message: "Invalid or missing delivery status." });
+    }
+
+    const order = await Orders.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found." });
+
+    order.deliveryStatus = deliveryStatus;
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Delivery status updated to ${deliveryStatus}.`,
+      order,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const completeOrder = async (req, res, next) => {
   try {
     const { orderId } = req.body;
     const userId = req.user.id;
-    
+
     const order = await Orders.findOneAndUpdate(
-      { 
+      {
         _id: orderId,
         user: userId,
-        'payment.status': 'success'
+        "payment.status": "success"
       },
       {
         $set: {
-          status: 'Payment Done',
+          status: "Payment Done",
+          deliveryStatus: "Processing", // Set delivery to Processing after payment
           updatedAt: new Date()
         }
       },
       { new: true, runValidators: true }
     );
-    
+
     if (!order) {
       return next(createError(404, "Order not found or payment not completed"));
     }
-    
+
     return res.status(200).json({
       message: "Order completed successfully",
       success: true,
@@ -331,6 +359,45 @@ export const getAllOrders = async (req, res, next) => {
     return next(err);
   }
 };
+
+export const getAllOrdersForAdmin = async (req, res, next) => {
+  try {
+    // Check if the user is an admin
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied. Admin only." });
+    }
+
+    // Fetch all orders on the site
+    const orders = await Orders.find({})
+      .populate({
+        path: "products.product",
+        model: "Food", // Ensure this matches your Food model name
+      })
+      .populate({
+        path: "user",
+        model: "User", // Populates user details for each order
+        select: "name email" // Only include specific fields from User model
+      })
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({
+        message: "No orders found."
+      });
+    }
+
+    return res.status(200).json({
+      message: "All orders retrieved successfully",
+      totalOrders: orders.length,
+      orders
+    });
+
+  } catch (err) {
+    console.error("Admin get all orders error:", err);
+    return next(err);
+  }
+}
+
 // Favorites
 export const addToFavorites = async (req, res, next) => {
   try {
