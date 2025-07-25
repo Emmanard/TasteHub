@@ -53,6 +53,8 @@ const OrderHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid ${({ theme }) => theme.text_secondary + "20" || "#eee"};
@@ -69,7 +71,26 @@ const OrderId = styled.div`
   color: ${({ theme }) => theme.text_secondary || "#666"};
 `;
 
-const OrderStatus = styled.select`
+const OrderStatus = styled.div`
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  background: ${({ status, theme }) =>
+    status === "Delivered" || status === "Completed" || status === "Payment Done"
+      ? "#00ff0030" // Green background
+      : status === "Cancelled" || status === "failed"
+      ? "#ff000020" // Red background
+      : "#ffa50020"}; // Orange background
+  color: ${({ status, theme }) =>
+    status === "Delivered" || status === "Completed" || status === "Payment Done"
+      ? "green"
+      : status === "Cancelled" || status === "failed"
+      ? "#ff0000"
+      : "#ffa500"};
+`;
+
+const DeliverySelect = styled.select`
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 14px;
@@ -147,31 +168,30 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-const fetchAllOrders = async () => {
-  setLoading(true);
-  try {
-    const { data, status } = await GetAllOrdersForAdmin();
-    console.log("Admin Orders API Response:", data);
+  const fetchAllOrders = async () => {
+    setLoading(true);
+    try {
+      const { data, status } = await GetAllOrdersForAdmin();
+      console.log("Admin Orders API Response:", data);
 
-    // 200 -> data.orders
-    if (status === 200 && Array.isArray(data.orders)) {
-      setOrders(data.orders);
-      if (data.orders.length === 0) toast.info("No orders found.");
-    } else {
-      toast.error(data.message || "Failed to load orders");
+      if (status === 200 && Array.isArray(data.orders)) {
+        setOrders(data.orders);
+        if (data.orders.length === 0) toast.info("No orders found.");
+      } else {
+        toast.error(data.message || "Failed to load orders");
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 404) {
+        setOrders([]);
+        toast.info("No orders found.");
+      } else {
+        toast.error(err.response?.data?.message || "Error fetching orders");
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    if (err.response?.status === 404) {
-      setOrders([]);
-      toast.info("No orders found.");
-    } else {
-      toast.error(err.response?.data?.message || "Error fetching orders");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const statusHandler = async (event, orderId) => {
     try {
@@ -207,14 +227,23 @@ const fetchAllOrders = async () => {
               <OrderCard key={order._id}>
                 <OrderHeader>
                   <OrderId>Order #{order._id.slice(-8)}</OrderId>
-                  <OrderStatus
+
+                 
+
+                  {/* Payment Status */}
+                  <OrderStatus status={order.status}>
+                    {order.status === "Payment Done" ? "Payment Done" : "Pending Payment"}
+                  </OrderStatus>
+
+                  {/* Delivery Select */}
+                  <DeliverySelect
                     value={order.deliveryStatus || "Processing"}
                     onChange={(event) => statusHandler(event, order._id)}
                   >
                     <option value="Processing">Processing</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
-                  </OrderStatus>
+                  </DeliverySelect>
                 </OrderHeader>
 
                 <Address>
@@ -225,22 +254,16 @@ const fetchAllOrders = async () => {
                 <ProductList>
                   {(order.products || []).map((item, idx) => (
                     <ProductItem key={idx}>
-                     <ProductImg
-  src={
-    item.product?.img ||
-    "/placeholder-image.png"
-  }
-  alt={item.product?.name || "Product"}
-  onError={(e) => (e.target.src = "/placeholder-image.png")}
-/>
-
+                      <ProductImg
+                        src={item.product?.img || "/placeholder-image.png"}
+                        alt={item.product?.name || "Product"}
+                        onError={(e) => (e.target.src = "/placeholder-image.png")}
+                      />
                       <ProductInfo>
                         <ProductName>{item.product?.name || "Unnamed Product"}</ProductName>
                         <ProductQuantity>Quantity: {item.quantity}</ProductQuantity>
                       </ProductInfo>
-                      <div>
-                        {formatCurrency(item.product?.price * item.quantity || 0)}
-                      </div>
+                   
                     </ProductItem>
                   ))}
                 </ProductList>
