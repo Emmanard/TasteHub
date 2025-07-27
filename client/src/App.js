@@ -1,59 +1,82 @@
-import styled, { ThemeProvider } from "styled-components";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+// App.jsx
+import { lazy, Suspense, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
+import { ThemeProvider, createGlobalStyle } from "styled-components";
+import { useSelector } from "react-redux";
 import { lightTheme } from "./utils/Themes";
 import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
-import { useState } from "react";
 import Authentication from "./pages/Authentication";
-import Favourites from "./pages/Favourites";
-import Cart from "./pages/Cart";
-import FoodDetails from "./pages/FoodDetails";
-import PaymentPage from "./pages/PaymentPage";
-import FoodListing from "./pages/FoodListing";
-import SignIn from "./components/SignIn";
-import Orders from "./pages/Orders";
-import PaymentCallback from "./pages/PaymentCallback";
-import SearchPage from "./pages/SearchPage";
-import Contact from "./pages/Contact";
-import { useSelector } from "react-redux";
+import Loader from "./components/Loader";
 
-const Container = styled.div``;
+const Home = lazy(() => import("./pages/Home"));
+const Favourites = lazy(() => import("./pages/Favourites"));
+const Cart = lazy(() => import("./pages/Cart"));
+const FoodDetails = lazy(() => import("./pages/FoodDetails"));
+const PaymentPage = lazy(() => import("./pages/PaymentPage"));
+const FoodListing = lazy(() => import("./pages/FoodListing"));
+const Orders = lazy(() => import("./pages/Orders"));
+const PaymentCallback = lazy(() => import("./pages/PaymentCallback"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const Contact = lazy(() => import("./pages/Contact"));
 
-function App() {
-  const { currentUser } = useSelector((state) => state.user);
-  const { open, message, severity } = useSelector((state) => state.snackbar);
+const GlobalStyle = createGlobalStyle`
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+`;
+
+// Authentication gate for all routes
+const RequireAuth = () => {
+  const { currentUser } = useSelector((s) => s.user);
+  return currentUser ? <Outlet /> : <Navigate to="/auth" replace />;
+};
+
+export default function App() {
+  const { currentUser } = useSelector((s) => s.user);
   const [openAuth, setOpenAuth] = useState(false);
+
   return (
     <ThemeProvider theme={lightTheme}>
-      <BrowserRouter>
-        <Container>
-          <Navbar
-            setOpenAuth={setOpenAuth}
-            openAuth={openAuth}
-            currentUser={currentUser}
-          />
+      <GlobalStyle />
+      <Router>
+        <Navbar
+          setOpenAuth={setOpenAuth}
+          openAuth={openAuth}
+          currentUser={currentUser}
+        />
+
+        <Suspense fallback={<Loader />}>
           <Routes>
-            <Route path="/" exact element={<Home />} />
-            <Route path="/favorite" exact element={<Favourites />} />
-            <Route path="/search" exact element={<SearchPage />} />
-            <Route path="/cart" exact element={<Cart />} />
-            <Route path="/contact" exact element={<Contact />} />
+            {/* Public authentication route */}
+            <Route path="/auth" element={<Authentication modal={false} />} />
 
-            <Route path="/dishes/:id" exact element={<FoodDetails />} />
-            <Route path="/dishes" exact element={<FoodListing />} />
-            <Route path="/login" exact element={<SignIn/>} />
-            <Route path="/orders" exact element={<Orders />} />
-            <Route path="/payment" element={<PaymentPage />} />
-            <Route path="/payment/callback" element={<PaymentCallback />} />
+            {/* Private routes */}
+            <Route element={<RequireAuth />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/favorite" element={<Favourites />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/dishes/:id" element={<FoodDetails />} />
+              <Route path="/dishes" element={<FoodListing />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/payment" element={<PaymentPage />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
+            </Route>
 
+            <Route path="*" element={<div>404 – Not Found</div>} />
           </Routes>
-          {openAuth && (
-            <Authentication setOpenAuth={setOpenAuth} openAuth={openAuth} />
-          )}
-        </Container>
-      </BrowserRouter>
+        </Suspense>
+
+        {/* Modal version for quick login */}
+        {openAuth && (
+          <Authentication setOpenAuth={setOpenAuth} openAuth={openAuth} />
+        )}
+      </Router>
     </ThemeProvider>
   );
 }
-
-export default App;

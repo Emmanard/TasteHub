@@ -9,8 +9,15 @@ export const UserSignUp = async (data) => await API.post("/user/signup", data);
 export const UserSignIn = async (data) => await API.post("/user/signin", data);
 
 // Products
-export const getAllProducts = async (filter) =>
-  await API.get(`/food?${filter}`);
+export const getAllProducts = async (filter = '') => {
+  try {
+    const response = await API.get(`/food?${filter}`);
+    return response;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
 
 export const getProductDetails = async (id) =>
   await API.get(`/food/${id}`);

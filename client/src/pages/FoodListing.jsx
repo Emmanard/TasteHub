@@ -21,6 +21,7 @@ const Container = styled.div`
   }
   background: ${({ theme }) => theme.bg};
 `;
+
 const Filters = styled.div`
   padding: 20px 16px;
   flex: 1;
@@ -30,15 +31,18 @@ const Filters = styled.div`
     max-width: 440px;
   }
 `;
+
 const Menu = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
 `;
+
 const Products = styled.div`
   flex: 1;
   padding: 20px 0px;
 `;
+
 const CardWrapper = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -57,15 +61,18 @@ const FilterSection = styled.div`
   gap: 16px;
   padding: 12px;
 `;
+
 const Title = styled.div`
   font-size: 20px;
   font-weight: 500;
 `;
+
 const Item = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 `;
+
 const Selectableitem = styled.div`
   cursor: pointer;
   display: flex;
@@ -92,12 +99,26 @@ const PageTitle = styled.div`
   color: ${({ theme }) => theme.text_primary};
 `;
 
+const ErrorMessage = styled.div`
+  color: red;
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+`;
+
+const NoProductsMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 16px;
+  color: ${({ theme }) => theme.text_secondary};
+`;
+
 const FoodListing = () => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
+  const [error, setError] = useState(null);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  console.log(selectedCategories, "selectedCategories");
 
   const [searchParams] = useSearchParams();
 
@@ -106,20 +127,45 @@ const FoodListing = () => {
 
   const getFilteredProductsData = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const res = await getAllProducts(); // Fetch all without sending selectedCategories
+      const response = await getAllProducts();
+      
+      // Handle different possible response structures
+      let productsData = [];
+      
+      if (response && response.data) {
+        // If response has a data property
+        if (Array.isArray(response.data)) {
+          productsData = response.data;
+        } else if (response.data.products && Array.isArray(response.data.products)) {
+          productsData = response.data.products;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          productsData = response.data.data;
+        }
+      } else if (Array.isArray(response)) {
+        // If response is directly an array
+        productsData = response;
+      }
 
-      let filtered = res.data;
-
+      // Apply category filtering if categories are selected
+      let filtered = productsData;
       if (selectedCategories.length > 0) {
-        filtered = res.data.filter((product) =>
-          product.category.some((cat) => selectedCategories.includes(cat))
-        );
+        filtered = productsData.filter((product) => {
+          // Ensure product has category and it's an array
+          if (!product.category || !Array.isArray(product.category)) {
+            return false;
+          }
+          return product.category.some((cat) => selectedCategories.includes(cat));
+        });
       }
 
       setProducts(filtered);
+
     } catch (error) {
-      console.error("Failed to fetch products:", error);
+      setError('Failed to load products. Please try again later.');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -150,26 +196,14 @@ const FoodListing = () => {
     <Container>
       <Filters>
         <Menu>
-          {filter.map((filters) => (
+          {Array.isArray(filter) && filter.map((filters) => (
             <FilterSection key={filters.value}>
               <Title>{filters.name}</Title>
               {filters.value === "price" ? (
-                // <Slider
-                //   getAriaLabel={() => "Price range"}
-                //   value={priceRange}
-                //   min={0}
-                //   max={1000}
-                //   valueLabelDisplay="auto"
-                //   marks={[
-                //     { value: 0, label: "$0" },
-                //     { value: 1000, label: "$1000" },
-                //   ]}
-                //   onChange={(e, newValue) => setPriceRange(newValue)}
-                // />
                 <div></div>
               ) : filters.value === "category" ? (
                 <Item>
-                  {filters.items.map((item) => (
+                  {Array.isArray(filters.items) && filters.items.map((item) => (
                     <Selectableitem
                       key={item}
                       selected={selectedCategories.includes(item)}
@@ -192,15 +226,25 @@ const FoodListing = () => {
           ))}
         </Menu>
       </Filters>
+      
       <Products>
         <PageTitle>{getPageTitle()}</PageTitle>
         <CardWrapper>
           {loading ? (
             <CircularProgress />
-          ) : (
+          ) : error ? (
+            <ErrorMessage>{error}</ErrorMessage>
+          ) : Array.isArray(products) && products.length > 0 ? (
             products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))
+          ) : (
+            <NoProductsMessage>
+              {selectedCategories.length > 0 
+                ? `No products found in ${selectedCategories.join(', ')} category${selectedCategories.length > 1 ? 'ies' : 'y'}`
+                : 'No products available'
+              }
+            </NoProductsMessage>
           )}
         </CardWrapper>
       </Products>

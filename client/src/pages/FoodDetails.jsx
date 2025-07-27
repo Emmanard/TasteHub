@@ -146,7 +146,22 @@ const FoodDetails = () => {
     setLoading(true);
     try {
       const res = await getProductDetails(id);
-      setProduct(res.data);
+      
+      // Handle different possible response structures
+      let productData = null;
+      
+      if (res && res.data) {
+        // New backend format: {success, count, data: product}
+        if (res.data.data) {
+          productData = res.data.data;
+        }
+        // Old backend format: direct product object (fallback)
+        else if (res.data.name || res.data._id) {
+          productData = res.data;
+        }
+      }
+      
+      setProduct(productData);
     } catch (error) {
       const errorMessage = handleApiError(error);
       dispatch(openSnackbar(errorMessage));
@@ -193,7 +208,22 @@ const FoodDetails = () => {
       }
 
       const res = await getFavourite(token);
-      const isFavorite = res.data?.some((favorite) => favorite._id === id);
+      
+      // Handle different possible response structures for favorites
+      let favoritesData = [];
+      
+      if (res && res.data) {
+        // New backend format: {success, count, data: [...]}
+        if (res.data.data && Array.isArray(res.data.data)) {
+          favoritesData = res.data.data;
+        }
+        // Old backend format: direct array (fallback)
+        else if (Array.isArray(res.data)) {
+          favoritesData = res.data;
+        }
+      }
+      
+      const isFavorite = favoritesData.some((favorite) => favorite._id === id);
       setFavorite(isFavorite);
     } catch (error) {
       const errorMessage = handleApiError(error);
@@ -206,7 +236,7 @@ const FoodDetails = () => {
   useEffect(() => {
     getProduct();
     checkFavorite();
-  }, [id]); // Added id as dependency
+  }, [id]);
 
   const addCart = async () => {
     setCartLoading(true);

@@ -51,17 +51,51 @@ const CardWrapper = styled.div`
   }
 `;
 
+const ErrorMessage = styled.div`
+  color: red;
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+`;
+
 const Home = () => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const getProducts = async () => {
     setLoading(true);
-    await getAllProducts().then((res) => {
-      setProducts(res.data);
+    setError(null);
+    
+    try {
+      const response = await getAllProducts();
+      
+      // Handle different possible response structures
+      let productsData = [];
+      
+      if (response && response.data) {
+        // If response has a data property
+        if (Array.isArray(response.data)) {
+          productsData = response.data;
+        } else if (response.data.products && Array.isArray(response.data.products)) {
+          productsData = response.data.products;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          productsData = response.data.data;
+        }
+      } else if (Array.isArray(response)) {
+        // If response is directly an array
+        productsData = response;
+      }
+      
+      setProducts(productsData);
+      
+    } catch (error) {
+      setError('Failed to load products. Please try again later.');
+      setProducts([]);
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   const handleCategoryClick = (categoryName) => {
@@ -134,7 +168,7 @@ const Home = () => {
         {/* Right Image Section */}
         <div className="relative lg:w-1/2 mt-12 lg:mt-0">
           <img
-            src="https://www.yumlista.com/storage/recipes/AiEgolJU4zflIQ03P49S9Czgbtjp0DptdYOa2nM5.jpg" // Replace with actual URL later
+            src="https://www.yumlista.com/storage/recipes/AiEgolJU4zflIQ03P49S9Czgbtjp0DptdYOa2nM5.jpg"
             alt="Nigerian Food"
             className="rounded-full w-full max-w-sm mx-auto shadow-lg"
           />
@@ -170,15 +204,16 @@ const Home = () => {
           </div>
         </div>
       </section>
+      
       <Section>
         <Title>Food Categories</Title>
         <CardWrapper>
-          {category.map((category) => (
+          {Array.isArray(category) && category.map((cat) => (
             <ProductCategoryCard
-              key={category.id || category.title}
-              category={category}
+              key={cat.id || cat.title}
+              category={cat}
               onClick={() =>
-                handleCategoryClick(category.name || category.title)
+                handleCategoryClick(cat.name || cat.title)
               }
             />
           ))}
@@ -189,11 +224,19 @@ const Home = () => {
         <Title>Most Popular</Title>
         {loading ? (
           <CircularProgress />
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
         ) : (
           <CardWrapper>
-            {products.map((product) => {
-              return <ProductsCard key={product._id} product={product} />;
-            })}
+            {Array.isArray(products) && products.length > 0 ? (
+              products.map((product) => (
+                <ProductsCard key={product._id} product={product} />
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                No products available
+              </div>
+            )}
           </CardWrapper>
         )}
       </Section>

@@ -80,24 +80,24 @@ const OrderDate = styled.div`
   color: ${({ theme }) => theme.text_secondary};
 `;
 
-// Reusable status component for both status and deliveryStatus
+// Updated status component with green colors for success states
 const OrderStatus = styled.div`
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
   background: ${({ status, theme }) =>
-    status === "Delivered" || status === "Completed"
-      ? theme.primary + "20"
+    status === "Delivered" || status === "Completed" || status === "Payment Done" || status === "Paid"
+      ? "#22c55e20"  // Green background for success states
       : status === "Cancelled"
-      ? "#ff000020"
-      : "#ffa50020"};
+      ? "#ef444420"  // Red background for cancelled
+      : "#f59e0b20"}; // Orange background for pending states
   color: ${({ status, theme }) =>
-    status === "Delivered" || status === "Completed"
-      ? theme.primary
+    status === "Delivered" || status === "Completed" || status === "Payment Done" || status === "Paid"
+      ? "#16a34a"    // Green text for success states
       : status === "Cancelled"
-      ? "#ff0000"
-      : "#ffa500"};
+      ? "#dc2626"    // Red text for cancelled
+      : "#d97706"};  // Orange text for pending states
 `;
 
 const OrderDetails = styled.div`
@@ -232,8 +232,6 @@ const Orders = () => {
 
         const response = await getOrders(token);
 
-        console.log("API Response:", response);
-
         let ordersData = [];
         if (response?.data) {
           if (Array.isArray(response.data)) {
@@ -249,7 +247,6 @@ const Orders = () => {
 
         setOrders(ordersData);
       } catch (error) {
-        console.error("Error fetching orders:", error);
         setError("Failed to load orders. Please try again.");
         dispatch(
           openSnackbar({

@@ -1,20 +1,19 @@
-import React from "react";
+import React, { useCallback } from "react";
 import styled from "styled-components";
 import { Phone, Email, LocationOn, Chat, Schedule } from "@mui/icons-material";
 
-const Container = styled.div`
-  padding: 20px 30px;
-  padding-bottom: 100px;
+const Container = styled.section`
+  padding: 20px 30px 100px;
   height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   flex-direction: column;
   gap: 30px;
+  background: ${({ theme }) => theme.bg || "#f8f9fa"};
   @media (max-width: 768px) {
     padding: 20px 12px;
   }
-  background: ${({ theme }) => theme.bg || '#f8f9fa'};
 `;
 
 const Section = styled.div`
@@ -28,15 +27,14 @@ const Section = styled.div`
 
 const Title = styled.h1`
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
-  color: #333;
-  margin-bottom: 10px;
+  color: ${({ theme }) => theme.text || "#333"};
 `;
 
 const Subtitle = styled.p`
   text-align: center;
-  color: #666;
+  color: ${({ theme }) => theme.subText || "#666"};
   font-size: 16px;
   margin-bottom: 40px;
 `;
@@ -48,14 +46,14 @@ const ContactGrid = styled.div`
   margin-bottom: 40px;
 `;
 
-const ContactCard = styled.div`
-  background: white;
+const ContactCard = styled.article`
+  background: #fff;
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  
+
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -73,154 +71,132 @@ const IconWrapper = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: ${({ bgColor }) => bgColor || '#ef4444'};
+  background: ${({ bgColor }) => bgColor || "#ef4444"};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #fff;
 `;
 
 const ContactTitle = styled.h3`
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: ${({ theme }) => theme.text || "#333"};
   margin: 0;
 `;
 
 const ContactInfo = styled.div`
-  color: #666;
+  color: ${({ theme }) => theme.subText || "#666"};
   font-size: 14px;
   line-height: 1.5;
 `;
 
-const ContactAction = styled.div`
+const ContactValue = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  color: ${({ theme }) => theme.text || "#333"};
+  margin-bottom: 4px;
+`;
+
+const ContactAction = styled.span`
+  display: inline-block;
   margin-top: 16px;
   font-weight: 500;
   color: #ef4444;
   text-decoration: none;
-  
+  cursor: pointer;
+
   &:hover {
     color: #dc2626;
   }
 `;
 
-
-
-
+const CONTACT_ITEMS = [
+  {
+    id: "phone",
+    title: "Call Us",
+    value: "+234 7046629255",
+    subtitle: "Available Mon-Sat, 9am - 6pm",
+    action: "Tap to call",
+    bgColor: "#10b981",
+    icon: <Phone />,
+  },
+  {
+    id: "email",
+    title: "Email Support",
+    value: "abarikwuchukwuemeka@gmail.com",
+    subtitle: "We typically respond within 24 hours",
+    action: "Send email",
+    bgColor: "#3b82f6",
+    icon: <Email />,
+  },
+  {
+    id: "whatsapp",
+    title: "WhatsApp Chat",
+    value: "https://wa.me/2347046629255",
+    subtitle: "Chat with us instantly on WhatsApp",
+    action: "Start chat",
+    bgColor: "#25d366",
+    icon: <Chat />,
+  },
+  {
+    id: "directions",
+    title: "Visit Us",
+    value: "Caritas University Amorji Nike, Enugu State, Nigeria",
+    subtitle: "Caritas University Amorji Nike, Enugu State, Nigeria",
+    action: "Get directions",
+    bgColor: "#f59e0b",
+    icon: <LocationOn />,
+  },
+];
 
 const Contact = () => {
-  const handleContactClick = (type, value) => {
+  const handleContactClick = useCallback((type, value) => {
     switch (type) {
-      case 'phone':
-        window.open(`tel:${value}`, '_self');
+      case "phone":
+        window.open(`tel:${value}`, "_self");
         break;
-      case 'email':
-        const subject = encodeURIComponent('Support Request');
-        const body = encodeURIComponent('Hello, I need help with...');
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${value}&su=${subject}&body=${body}`, '_blank');
+      case "email":
+        window.open(`mailto:${value}?subject=Support%20Request&body=Hello,%20I%20need%20help%20with...`, "_blank");
         break;
-      case 'whatsapp':
-        window.open(value, '_blank');
+      case "whatsapp":
+        window.open(value, "_blank", "noopener,noreferrer");
         break;
-      case 'directions':
-        const address = encodeURIComponent(value);
-        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+      case "directions":
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value)}`, "_blank");
         break;
       default:
         break;
     }
-  };
+  }, []);
 
   return (
     <Container>
       <Section>
         <Title>Get in Touch</Title>
-        <Subtitle>
-          Have questions about your order or need help? We're here to assist you!
-        </Subtitle>
+        <Subtitle>Have questions about your order or need help? We're here to assist you!</Subtitle>
 
         <ContactGrid>
-          <ContactCard onClick={() => handleContactClick('phone', '+2347046629255')}>
-            <ContactHeader>
-              <IconWrapper bgColor="#10b981">
-                <Phone />
-              </IconWrapper>
-              <ContactTitle>Call Us</ContactTitle>
-            </ContactHeader>
-            <ContactInfo>
-              <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                +234 7046629255
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Schedule fontSize="small" />
-                Available Mon-Sat, 9am - 6pm
-              </div>
-            </ContactInfo>
-            <ContactAction>
-              Tap to call
-            </ContactAction>
-          </ContactCard>
-
-          <ContactCard onClick={() => handleContactClick('email', 'abarikwuchukwuemeka@gmail.com')}>
-            <ContactHeader>
-              <IconWrapper bgColor="#3b82f6">
-                <Email />
-              </IconWrapper>
-              <ContactTitle>Email Support</ContactTitle>
-            </ContactHeader>
-            <ContactInfo>
-              <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                abarikwuchukwuemeka@gmail.com
-              </div>
-              <div>
-                We typically respond within 24 hours
-              </div>
-            </ContactInfo>
-            <ContactAction>
-              Send email
-            </ContactAction>
-          </ContactCard>
-
-          <ContactCard onClick={() => handleContactClick('whatsapp', 'https://wa.me/2347046629255')}>
-            <ContactHeader>
-              <IconWrapper bgColor="#25d366">
-                <Chat />
-              </IconWrapper>
-              <ContactTitle>WhatsApp Chat</ContactTitle>
-            </ContactHeader>
-            <ContactInfo>
-              <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                Quick Support
-              </div>
-              <div>
-                Chat with us instantly on WhatsApp
-              </div>
-            </ContactInfo>
-            <ContactAction>
-              Start chat
-            </ContactAction>
-          </ContactCard>
-
-          <ContactCard onClick={() => handleContactClick('directions', 'Caritas University Amorji Nike, Enugu State, Nigeria')}>
-            <ContactHeader>
-              <IconWrapper bgColor="#f59e0b">
-                <LocationOn />
-              </IconWrapper>
-              <ContactTitle>Visit Us</ContactTitle>
-            </ContactHeader>
-            <ContactInfo>
-              <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                Business Address
-              </div>
-              <div>
-                Caritas University Amorji Nike,<br />
-                Enugu State, Nigeria
-              </div>
-            </ContactInfo>
-            <ContactAction>
-              Get directions
-            </ContactAction>
-          </ContactCard>
+          {CONTACT_ITEMS.map(({ id, title, value, subtitle, action, bgColor, icon }) => (
+            <ContactCard key={id} onClick={() => handleContactClick(id, value)} aria-label={`Contact via ${title}`}>
+              <ContactHeader>
+                <IconWrapper bgColor={bgColor}>{icon}</IconWrapper>
+                <ContactTitle>{title}</ContactTitle>
+              </ContactHeader>
+              <ContactInfo>
+                <ContactValue>{value.includes("http") ? "Quick Support" : value}</ContactValue>
+                {id === "phone" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <Schedule fontSize="small" />
+                    {subtitle}
+                  </div>
+                ) : (
+                  <div>{subtitle}</div>
+                )}
+              </ContactInfo>
+              <ContactAction>{action}</ContactAction>
+            </ContactCard>
+          ))}
         </ContactGrid>
       </Section>
     </Container>

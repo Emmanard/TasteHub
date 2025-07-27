@@ -20,7 +20,6 @@ const Left = styled.div`
     display: none;
   }
 `;
-
 const Logo = styled.img`
   position: absolute;
   top: 40px;
@@ -56,7 +55,6 @@ const Image = styled.img`
   width: 100%;
   object-fit: cover;
 `;
-
 const Right = styled.div`
   position: relative;
   flex: 0.9;
@@ -70,7 +68,6 @@ const Right = styled.div`
     flex: 1;
   }
 `;
-
 const CloseButton = styled.div`
   position: absolute;
   top: 20px;
@@ -87,7 +84,6 @@ const CloseButton = styled.div`
     background: ${({ theme }) => theme.primary + 20};
   }
 `;
-
 const Text = styled.p`
   display: flex;
   gap: 12px;
@@ -106,40 +102,50 @@ const TextButton = styled.div`
   font-weight: 600;
 `;
 
-const Authentication = ({ openAuth, setOpenAuth }) => {
+const AuthContent = ({ setOpenAuth }) => {
   const [login, setLogin] = useState(true);
+
   return (
-    <Modal open={openAuth} onClose={() => setOpenAuth(false)}>
-      <Container>
-        <Left>
-          <Logo src={LogoImage} />
-          <Image src={AuthImage} />
-        </Left>
-        <Right>
+    <Container>
+      <Left>
+        <Logo src={LogoImage} />
+        <Image src={AuthImage} />
+      </Left>
+      <Right>
+        {setOpenAuth && (
           <CloseButton>
             <Close onClick={() => setOpenAuth(false)} />
           </CloseButton>
-          {login ? (
-            <>
-              <SignIn setOpenAuth={setOpenAuth} />
-              <Text>
-                {" "}
-                Don't have an account ?{" "}
-                <TextButton onClick={() => setLogin(false)}>Sign Up</TextButton>
-              </Text>
-            </>
-          ) : (
-            <>
-              <SignUp setOpenAuth={setOpenAuth} />
-              <Text>
-                Already have an account ?{" "}
-                <TextButton onClick={() => setLogin(true)}>Sign In</TextButton>
-              </Text>
-            </>
-          )}
-        </Right>
-      </Container>
+        )}
+        {login ? (
+          <>
+            <SignIn setOpenAuth={setOpenAuth} />
+            <Text>
+              Don't have an account?
+              <TextButton onClick={() => setLogin(false)}>Sign Up</TextButton>
+            </Text>
+          </>
+        ) : (
+          <>
+            <SignUp setOpenAuth={setOpenAuth} />
+            <Text>
+              Already have an account?
+              <TextButton onClick={() => setLogin(true)}>Sign In</TextButton>
+            </Text>
+          </>
+        )}
+      </Right>
+    </Container>
+  );
+};
+
+const Authentication = ({ openAuth, setOpenAuth, modal = true }) => {
+  return modal ? (
+    <Modal open={openAuth} onClose={() => setOpenAuth(false)}>
+      <AuthContent setOpenAuth={setOpenAuth} />
     </Modal>
+  ) : (
+    <AuthContent />
   );
 };
 
