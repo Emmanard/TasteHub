@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import TextInput from "./TextInput";
 import Button from "./Button";
 import { useDispatch } from "react-redux";
@@ -39,6 +40,7 @@ const TextButton = styled.div`
 
 const SignIn = ({ setOpenAuth }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [email, setEmail] = useState("");
@@ -67,7 +69,14 @@ const SignIn = ({ setOpenAuth }) => {
           );
           setLoading(false);
           setButtonDisabled(false);
-          setOpenAuth(false);
+          
+          // Close modal if it exists
+          if (setOpenAuth) {
+            setOpenAuth(false);
+          }
+          
+          // Navigate to home page
+          navigate("/");
         })
         .catch((err) => {
           setLoading(false);

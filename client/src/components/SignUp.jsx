@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import TextInput from "./TextInput";
 import Button from "./Button";
 import { UserSignUp } from "../api";
@@ -27,6 +28,7 @@ const Span = styled.div`
 
 const SignUp = ({ setOpenAuth }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [name, setName] = useState("");
@@ -57,7 +59,14 @@ const SignUp = ({ setOpenAuth }) => {
           );
           setLoading(false);
           setButtonDisabled(false);
-          setOpenAuth(false);
+          
+          // Close modal if it exists
+          if (setOpenAuth) {
+            setOpenAuth(false);
+          }
+          
+          // Navigate to home page
+          navigate("/");
         })
         .catch((err) => {
           setButtonDisabled(false);
@@ -84,6 +93,7 @@ const SignUp = ({ setOpenAuth }) => {
         });
     }
   };
+  
   return (
     <Container>
       <div>
