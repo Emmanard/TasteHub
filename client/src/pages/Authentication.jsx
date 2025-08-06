@@ -23,8 +23,8 @@ const Left = styled.div`
 `;
 
 const Logo = styled.img`
-  position: absolute;
-  top: 40px;
+  position: fixed;
+  top: 100px;
   left: 60px;
   width: 100px;
   height: 100px;
@@ -34,7 +34,7 @@ const Logo = styled.img`
   background: ${({ theme }) => theme.bg};
   border: 2px solid ${({ theme }) => theme.primary};
   transition: all 0.3s ease;
-  z-index: 10;
+  z-index: 1000;
   &:hover {
     transform: scale(1.05);
   }
