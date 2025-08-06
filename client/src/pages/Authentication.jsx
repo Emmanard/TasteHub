@@ -13,6 +13,7 @@ const Container = styled.div`
   display: flex;
   background: ${({ theme }) => theme.bg};
 `;
+
 const Left = styled.div`
   flex: 1;
   position: relative;
@@ -20,6 +21,7 @@ const Left = styled.div`
     display: none;
   }
 `;
+
 const Logo = styled.img`
   position: absolute;
   top: 40px;
@@ -32,16 +34,19 @@ const Logo = styled.img`
   background: ${({ theme }) => theme.bg};
   border: 2px solid ${({ theme }) => theme.primary};
   transition: all 0.3s ease;
+  z-index: 10;
   &:hover {
     transform: scale(1.05);
   }
 `;
+
 const Image = styled.img`
   position: relative;
   height: 100%;
   width: 100%;
   object-fit: cover;
 `;
+
 const Right = styled.div`
   position: relative;
   flex: 0.9;
@@ -55,6 +60,7 @@ const Right = styled.div`
     flex: 1;
   }
 `;
+
 const Text = styled.p`
   display: flex;
   gap: 12px;
@@ -66,6 +72,7 @@ const Text = styled.p`
     font-size: 14px;
   }
 `;
+
 const TextButton = styled.div`
   color: ${({ theme }) => theme.primary};
   cursor: pointer;
