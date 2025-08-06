@@ -1,15 +1,15 @@
-import { Modal } from "@mui/material";
 import React, { useState } from "react";
 import styled from "styled-components";
 import LogoImage from "../utils/Images/Image_fx.jpg";
 import AuthImage from "../utils/Images/AuthPic.webp";
-import { Close } from "@mui/icons-material";
 import SignIn from "../components/SignIn";
 import SignUp from "../components/SignUp";
+import { useSelector } from "react-redux";
+import { Navigate } from "react-router-dom";
 
 const Container = styled.div`
   flex: 1;
-  height: 100%;
+  height: 100vh;
   display: flex;
   background: ${({ theme }) => theme.bg};
 `;
@@ -35,19 +35,6 @@ const Logo = styled.img`
   &:hover {
     transform: scale(1.05);
   }
-  @media (max-width: 400px) {
-    width: 80px;
-    height: 80px;
-    top: 20px;
-    left: 20px;
-  }
-  @media (max-width: 768px) {
-    width: 100px;
-    height: 100px;
-    top: 20px;
-    left: 20px;
-  }
-  z-index: 10;
 `;
 const Image = styled.img`
   position: relative;
@@ -68,22 +55,6 @@ const Right = styled.div`
     flex: 1;
   }
 `;
-const CloseButton = styled.div`
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  border-radius: 50%;
-  padding: 2px;
-  width: 32px;
-  height: 32px;
-  border: 1px solid ${({ theme }) => theme.primary};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  &:hover {
-    background: ${({ theme }) => theme.primary + 20};
-  }
-`;
 const Text = styled.p`
   display: flex;
   gap: 12px;
@@ -102,8 +73,11 @@ const TextButton = styled.div`
   font-weight: 600;
 `;
 
-const AuthContent = ({ setOpenAuth }) => {
+const Authentication = () => {
   const [login, setLogin] = useState(true);
+  const { currentUser } = useSelector((state) => state.user);
+
+  if (currentUser) return <Navigate to="/" replace />;
 
   return (
     <Container>
@@ -112,22 +86,17 @@ const AuthContent = ({ setOpenAuth }) => {
         <Image src={AuthImage} />
       </Left>
       <Right>
-        {setOpenAuth && (
-          <CloseButton>
-            <Close onClick={() => setOpenAuth(false)} />
-          </CloseButton>
-        )}
         {login ? (
           <>
-            <SignIn setOpenAuth={setOpenAuth} />
+            <SignIn />
             <Text>
-              Don't have an account?
+              Don&apos;t have an account?
               <TextButton onClick={() => setLogin(false)}>Sign Up</TextButton>
             </Text>
           </>
         ) : (
           <>
-            <SignUp setOpenAuth={setOpenAuth} />
+            <SignUp />
             <Text>
               Already have an account?
               <TextButton onClick={() => setLogin(true)}>Sign In</TextButton>
@@ -136,16 +105,6 @@ const AuthContent = ({ setOpenAuth }) => {
         )}
       </Right>
     </Container>
-  );
-};
-
-const Authentication = ({ openAuth, setOpenAuth, modal = true }) => {
-  return modal ? (
-    <Modal open={openAuth} onClose={() => setOpenAuth(false)}>
-      <AuthContent setOpenAuth={setOpenAuth} />
-    </Modal>
-  ) : (
-    <AuthContent />
   );
 };
 

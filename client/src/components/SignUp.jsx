@@ -26,7 +26,7 @@ const Span = styled.div`
   color: ${({ theme }) => theme.text_secondary + 90};
 `;
 
-const SignUp = ({ setOpenAuth }) => {
+const SignUp = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -46,54 +46,24 @@ const SignUp = ({ setOpenAuth }) => {
   const handleSignUp = async () => {
     setLoading(true);
     setButtonDisabled(true);
-
     if (validateInputs()) {
       await UserSignUp({ name, email, password })
         .then((res) => {
           dispatch(loginSuccess(res.data));
-          dispatch(
-            openSnackbar({
-              message: "Sign Up Successful",
-              severity: "success",
-            })
-          );
+          dispatch(openSnackbar({ message: "Sign Up Successful", severity: "success" }));
           setLoading(false);
           setButtonDisabled(false);
-          
-          // Close modal if it exists
-          if (setOpenAuth) {
-            setOpenAuth(false);
-          }
-          
-          // Navigate to home page
           navigate("/");
         })
         .catch((err) => {
+          setLoading(false);
           setButtonDisabled(false);
-          if (err.response) {
-            setLoading(false);
-            setButtonDisabled(false);
-            alert(err.response.data.message);
-            dispatch(
-              openSnackbar({
-                message: err.response.data.message,
-                severity: "error",
-              })
-            );
-          } else {
-            setLoading(false);
-            setButtonDisabled(false);
-            dispatch(
-              openSnackbar({
-                message: err.message,
-                severity: "error",
-              })
-            );
-          }
+          const errorMsg = err?.response?.data?.message || err.message;
+          dispatch(openSnackbar({ message: errorMsg, severity: "error" }));
         });
     }
   };
-  
+
   return (
     <Container>
       <div>

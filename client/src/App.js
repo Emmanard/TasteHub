@@ -1,5 +1,5 @@
 // App.jsx
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -29,7 +29,6 @@ const GlobalStyle = createGlobalStyle`
   body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
 `;
 
-// Authentication gate for all routes
 const RequireAuth = () => {
   const { currentUser } = useSelector((s) => s.user);
   return currentUser ? <Outlet /> : <Navigate to="/auth" replace />;
@@ -37,22 +36,17 @@ const RequireAuth = () => {
 
 export default function App() {
   const { currentUser } = useSelector((s) => s.user);
-  const [openAuth, setOpenAuth] = useState(false);
 
   return (
     <ThemeProvider theme={lightTheme}>
       <GlobalStyle />
       <Router>
-        <Navbar
-          setOpenAuth={setOpenAuth}
-          openAuth={openAuth}
-          currentUser={currentUser}
-        />
+        <Navbar currentUser={currentUser} />
 
         <Suspense fallback={<Loader />}>
           <Routes>
             {/* Public authentication route */}
-            <Route path="/auth" element={<Authentication modal={false} />} />
+            <Route path="/auth" element={<Authentication />} />
 
             {/* Private routes */}
             <Route element={<RequireAuth />}>
@@ -71,13 +65,7 @@ export default function App() {
             <Route path="*" element={<div>404 – Not Found</div>} />
           </Routes>
         </Suspense>
-
-        {/* Modal version for quick login */}
-        {openAuth && (
-          <Authentication setOpenAuth={setOpenAuth} openAuth={openAuth} />
-        )}
       </Router>
     </ThemeProvider>
   );
 }
-

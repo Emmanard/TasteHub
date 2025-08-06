@@ -38,7 +38,7 @@ const TextButton = styled.div`
   }
 `;
 
-const SignIn = ({ setOpenAuth }) => {
+const SignIn = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -61,21 +61,9 @@ const SignIn = ({ setOpenAuth }) => {
       await UserSignIn({ email, password })
         .then((res) => {
           dispatch(loginSuccess(res.data));
-          dispatch(
-            openSnackbar({
-              message: "Login Successful",
-              severity: "success",
-            })
-          );
+          dispatch(openSnackbar({ message: "Login Successful", severity: "success" }));
           setLoading(false);
           setButtonDisabled(false);
-          
-          // Close modal if it exists
-          if (setOpenAuth) {
-            setOpenAuth(false);
-          }
-          
-          // Navigate to home page
           navigate("/");
         })
         .catch((err) => {
@@ -111,7 +99,6 @@ const SignIn = ({ setOpenAuth }) => {
           value={password}
           handelChange={(e) => setPassword(e.target.value)}
         />
-
         <TextButton>Forgot Password?</TextButton>
         <Button
           text="Sign In"
