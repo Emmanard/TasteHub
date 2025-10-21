@@ -245,7 +245,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Rishav** - *Initial work* - [YourGitHub](https://github.com/yourusername)
+emmanardhttps://github.com/Emmanard 
+
+https://github.com/omenvc
 
 ## 🙏 Acknowledgments
 
@@ -256,8 +258,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 If you have any questions or need help, please contact:
-- Email: emmanard9@gmail.com
-- GitHub Issues: [Create an issue](https://github.com/yourusername/food-delivery-website/issues)
+- Email: emmanard9@gmail.com  || chimavalentine11@gmail.com
+
 
 ## 🔄 Version History
 
