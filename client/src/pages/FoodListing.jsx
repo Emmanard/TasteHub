@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import ProductCard from "../components/cards/ProductsCard";
 import { filter } from "../utils/data";
-import { CircularProgress, Slider } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import { getAllProducts } from "../api";
 
 const Container = styled.div`
@@ -117,7 +117,6 @@ const FoodListing = () => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [error, setError] = useState(null);
-  const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState([]);
 
   const [searchParams] = useSearchParams();

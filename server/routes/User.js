@@ -1,5 +1,6 @@
 import { verifyToken, isAdmin }from "../middleware/verifyUser.js";
 import {
+  forgotPassword,
   UserLogin,
   UserRegister,
   addToCart,
@@ -11,8 +12,10 @@ import {
   completeOrder,
   removeFromCart,
   removeFromFavorites,
+  resetPassword,
   getAllOrdersForAdmin,
-  updateDeliveryStatus
+  updateDeliveryStatus,
+  verifyOTP
 } from "../controllers/User.js";
 import {
   initializePayment,
@@ -20,31 +23,28 @@ import {
   handleWebhook
 } from "../controllers/Payment.js"; 
 import express from "express";
+import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 // User Auth
-router.post("/signup", (req, res, next) => {
+router.post("/signup", authLimiter, (req, res, next) => {
   req.body.role = "user";
   return UserRegister(req, res, next);
 });
-router.post("/signin", (req, res, next) => {
+router.post("/signin", authLimiter, (req, res, next) => {
   req.body.loginAs = "user";
   return UserLogin(req, res, next);
 });
+router.post("/forgot-password", otpLimiter, forgotPassword);
+router.post("/verify-otp", otpLimiter, verifyOTP);
+router.post("/reset-password", otpLimiter, resetPassword);
 
 // Admin Auth
-router.post("/admin/signup", (req, res, next) => {
-  req.body.role = "admin";
-  return UserRegister(req, res, next);
-});
-router.post("/admin/signin", (req, res, next) => {
+router.post("/admin/signin", authLimiter, (req, res, next) => {
   req.body.loginAs = "admin";
   return UserLogin(req, res, next);
 });
-
-// Protected admin signup (only admin can create another admin)
-router.post("/admin/signup", verifyToken, isAdmin, UserRegister);
 router.patch("/admin/orders/:orderId/delivery-status", verifyToken, isAdmin, updateDeliveryStatus);
 
 // Cart routes

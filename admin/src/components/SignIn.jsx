@@ -5,7 +5,7 @@ import Button from "./Button";
 import { useDispatch } from "react-redux";
 import { UserSignIn } from "../api";
 import { loginSuccess } from "../redux/reducers/UserSlice";
-import { openSnackbar } from "../redux/reducers/SnackbarSlice";
+import { toast } from "react-toastify";
 
 const Container = styled.div`
   width: 100%;
@@ -37,7 +37,7 @@ const TextButton = styled.div`
   }
 `;
 
-const SignIn = ({ setOpenAuth }) => {
+const SignIn = () => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
@@ -59,22 +59,19 @@ const SignIn = ({ setOpenAuth }) => {
       await UserSignIn({ email, password, loginAs: "admin" }) // Ensure admin login
         .then((res) => {
           dispatch(loginSuccess(res.data));
-          dispatch(
-            openSnackbar({
-              message: "Admin Login Successful",
-              severity: "success",
-            })
-          );
+          toast.success("Admin Login Successful");
           setLoading(false);
           setButtonDisabled(false);
-          setOpenAuth(false);
         })
         .catch((err) => {
           setLoading(false);
           setButtonDisabled(false);
           const msg = err.response?.data?.message || err.message;
-          dispatch(openSnackbar({ message: msg, severity: "error" }));
+          toast.error(msg);
         });
+    } else {
+      setLoading(false);
+      setButtonDisabled(false);
     }
   };
 

@@ -49,7 +49,6 @@ const PaymentPage = () => {
     verifying, 
     paymentReference, 
     processPayment,
-    setLoading,
     setVerifying,
     setPaymentReference 
   } = usePaymentProcessing();

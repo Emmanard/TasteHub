@@ -1,10 +1,6 @@
 import API from "./Api"; // Import the pre-configured Axios instance
 
 // ---------- ADMIN AUTH ----------
-export const UserSignUp = async (data) => {
-  return await API.post("/user/admin/signup", { ...data, role: "admin" });
-};
-
 export const UserSignIn = async (data) => {
   return await API.post("/user/admin/signin", { ...data, loginAs: "admin" });
 };

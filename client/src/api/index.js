@@ -7,6 +7,11 @@ const API = axios.create({
 // Auth
 export const UserSignUp = async (data) => await API.post("/user/signup", data);
 export const UserSignIn = async (data) => await API.post("/user/signin", data);
+export const forgotPassword = async (data) =>
+  await API.post("/user/forgot-password", data);
+export const verifyOTP = async (data) => await API.post("/user/verify-otp", data);
+export const resetPassword = async (data) =>
+  await API.post("/user/reset-password", data);
 
 // Products
 export const getAllProducts = async (filter = '') => {

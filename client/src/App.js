@@ -13,6 +13,7 @@ import { lightTheme } from "./utils/Themes";
 import Navbar from "./components/Navbar";
 import Authentication from "./pages/Authentication";
 import Loader from "./components/Loader";
+import Toast from "./components/Toast";
 
 const Home = lazy(() => import("./pages/Home"));
 const Favourites = lazy(() => import("./pages/Favourites"));
@@ -40,6 +41,7 @@ export default function App() {
   return (
     <ThemeProvider theme={lightTheme}>
       <GlobalStyle />
+      <Toast />
       <Router>
         <Navbar currentUser={currentUser} />
 

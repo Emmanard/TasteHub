@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import { category } from "../utils/data";
-import HeaderImage from "../utils/Images/Header.png";
 import ProductCategoryCard from "../components/cards/ProductCategoryCard";
 import ProductsCard from "../components/cards/ProductsCard";
 import { getAllProducts } from "../api";
@@ -29,10 +28,6 @@ const Section = styled.div`
   display: flex;
   flex-direction: column;
   gap: 28px;
-`;
-const Img = styled.img`
-  width: 100%;
-  max-width: 1200px;
 `;
 const Title = styled.div`
   font-size: 28px;

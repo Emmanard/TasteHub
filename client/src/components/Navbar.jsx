@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { Link as LinkR, NavLink } from "react-router-dom";
+import { Link as LinkR, NavLink, useNavigate } from "react-router-dom";
 // import { ReactComponent as Logo } from "../utils/Images/logo.svg";
 import {
   FavoriteBorder,
@@ -145,9 +145,16 @@ const TextButton = styled.span`
   }
 `;
 
-const Navbar = ({ setOpenAuth, openAuth, currentUser }) => {
+const Navbar = ({ currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const openAuthPage = () => {
+    setIsOpen(false);
+    navigate("/auth");
+  };
+
   return (
     <Nav>
       <NavContainer>
@@ -227,12 +234,12 @@ const Navbar = ({ setOpenAuth, openAuth, currentUser }) => {
                   text="Sign Up"
                   outlined
                   small
-                  onClick={() => setOpenAuth(true)}
+                  onClick={openAuthPage}
                 />
                 <Button
                   text="Sign In"
                   small
-                  onClick={() => setOpenAuth(true)}
+                  onClick={openAuthPage}
                 />
               </div>
             )}
@@ -258,7 +265,7 @@ const Navbar = ({ setOpenAuth, openAuth, currentUser }) => {
             </>
           ) : (
             <>
-              <Button text="Sign In" small onClick={() => setOpenAuth(true)} />
+              <Button text="Sign In" small onClick={openAuthPage} />
             </>
           )}
         </ButtonContainer>

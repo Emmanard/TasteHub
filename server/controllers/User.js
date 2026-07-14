@@ -1,22 +1,17 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { createError } from "../error.js";
 import User from "../models/User.js";
 import Orders from "../models/Orders.js";
+import { sendEmail } from "../utils/mailer.js";
 
 dotenv.config();
 
 // Auth
 export const UserRegister = async (req, res, next) => {
-  console.log("💡 Entered UserRegister controller");
-  
-  // Force role based on URL (safety check)
-  if (req.originalUrl.includes("/admin/signup")) {
-    req.body.role = "admin";
-  } else {
-    req.body.role = "user";
-  }
+  console.log("Entered UserRegister controller");
 
   const { name, email, password, img, role } = req.body;
 
@@ -111,6 +106,106 @@ export const UserLogin = async (req, res, next) => {
   } catch (error) {
     console.error("Login Error:", error.message);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const hashOTP = (otp) => crypto.createHash("sha256").update(otp).digest("hex");
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(200).json({
+        message: "If that email exists, a reset code has been sent.",
+      });
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    user.resetOTP = hashOTP(otp);
+    user.resetOTPExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: "Your TasteHub password reset code",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+          <h2>TasteHub password reset</h2>
+          <p>Your reset code is:</p>
+          <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px;">${otp}</p>
+          <p>This code expires in 15 minutes.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({
+      message: "If that email exists, a reset code has been sent.",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const verifyOTP = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetOTP || !user.resetOTPExpiry) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+
+    if (user.resetOTPExpiry < new Date() || user.resetOTP !== hashOTP(otp)) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+
+    return res.status(200).json({ message: "Reset code verified." });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, password } = req.body;
+
+    if (!email || !otp || !password) {
+      return res.status(400).json({ message: "Email, OTP, and password are required." });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetOTP || !user.resetOTPExpiry) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+
+    if (user.resetOTPExpiry < new Date() || user.resetOTP !== hashOTP(otp)) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.resetOTP = null;
+    user.resetOTPExpiry = null;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successful." });
+  } catch (error) {
+    return next(error);
   }
 };
 

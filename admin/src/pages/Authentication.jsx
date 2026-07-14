@@ -1,10 +1,8 @@
-import { useState } from "react";
 import styled from "styled-components";
 import LogoImage from "../utils/Images/Image_fx.jpg";
 import AuthImage from "../utils/Images/AuthPic.webp";
 import { Close } from "@mui/icons-material";
 import SignIn from "../components/SignIn";
-import SignUp from "../components/SignUp";
 import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
@@ -84,26 +82,7 @@ const CloseButton = styled.div`
   }
 `;
 
-const Text = styled.p`
-  display: flex;
-  gap: 12px;
-  font-size: 16px;
-  text-align: center;
-  color: ${({ theme }) => theme.text_secondary};
-  margin-top: 16px;
-  @media (max-width: 400px) {
-    font-size: 14px;
-  }
-`;
-const TextButton = styled.div`
-  color: ${({ theme }) => theme.primary};
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-`;
-
 const AuthenticationPage = () => {
-  const [login, setLogin] = useState(true);
   const navigate = useNavigate();
 
   return (
@@ -116,23 +95,7 @@ const AuthenticationPage = () => {
         <CloseButton onClick={() => navigate("/")}>
           <Close />
         </CloseButton>
-        {login ? (
-          <>
-            <SignIn />
-            <Text>
-              Don’t have an account?{" "}
-              <TextButton onClick={() => setLogin(false)}>Sign Up</TextButton>
-            </Text>
-          </>
-        ) : (
-          <>
-            <SignUp />
-            <Text>
-              Already have an account?{" "}
-              <TextButton onClick={() => setLogin(true)}>Sign In</TextButton>
-            </Text>
-          </>
-        )}
+        <SignIn />
       </Right>
     </Container>
   );

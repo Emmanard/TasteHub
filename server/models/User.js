@@ -6,6 +6,8 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     img: { type: String, default: null },
+    resetOTP: { type: String, default: null },
+    resetOTPExpiry: { type: Date, default: null },
 
     // Add role field with default as "user"
     role: { 

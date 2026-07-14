@@ -236,6 +236,7 @@ const FoodDetails = () => {
   useEffect(() => {
     getProduct();
     checkFavorite();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const addCart = async () => {

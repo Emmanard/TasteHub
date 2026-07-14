@@ -6,8 +6,7 @@ import {
   usePaymentVerification,
   validateCallbackParams,
   storePaymentSuccess,
-  storePaymentFailure,
-  clearPaymentStorage
+  storePaymentFailure
 } from '../hooks/usePayment';
 import { CallbackContainer, Message, CallbackSpinner } from './PaymentStyles';
 

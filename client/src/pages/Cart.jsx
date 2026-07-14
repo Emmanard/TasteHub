@@ -121,11 +121,6 @@ const ProDesc = styled.div`
   white-space: nowrap;
 `;
 
-const ProSize = styled.div`
-  font-size: 14px;
-  font-weight: 500;
-`;
-
 const Right = styled.div`
   flex: 1;
   display: flex;
@@ -217,8 +212,6 @@ const Cart = () => {
       }
 
       // Get current user data from localStorage or context
-      const token = localStorage.getItem("foodeli-app-token");
-      
       // Prepare order data for payment page
       const orderData = {
         products,
