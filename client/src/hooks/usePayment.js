@@ -691,9 +691,10 @@ export const usePaymentProcessing = () => {
   // Cleanup processed orders on unmount - capture the current processingOrderId value
   useEffect(() => {
     const currentProcessingOrderId = processingOrderId;
+    const processedOrders = processedOrdersRef.current;
     return () => {
       if (currentProcessingOrderId) {
-        processedOrdersRef.current.delete(currentProcessingOrderId);
+        processedOrders.delete(currentProcessingOrderId);
       }
     };
   }, [processingOrderId]);
